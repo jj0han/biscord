@@ -1,7 +1,9 @@
 import { DownloadSimpleIcon, FileIcon } from "@phosphor-icons/react"
 import { useState } from "react"
 
+import { PausableGif } from "@/components/pausable-gif"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { FavoriteStar } from "@/features/messages/gif-picker"
 import { formatBytes } from "@/lib/format"
 import type { Attachment } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -30,30 +32,54 @@ export function ZoomableImage({
   width,
   height,
   className,
+  gif = false,
 }: {
   src: string
   alt: string
   width?: number
   height?: number
   className?: string
+  /** pause after a few seconds and animate again on hover */
+  gif?: boolean
 }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn("block overflow-hidden rounded-lg", className)}
-        style={fitMedia(width, height)}
-      >
-        <img
-          src={src}
-          alt={alt}
-          loading="lazy"
-          className="size-full object-cover"
-          draggable={false}
-        />
-      </button>
+      <div className="group/media relative w-fit">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={cn("block overflow-hidden rounded-lg", className)}
+          style={fitMedia(width, height)}
+        >
+          {gif ? (
+            <PausableGif
+              src={src}
+              alt={alt}
+              className="size-full object-cover"
+            />
+          ) : (
+            <img
+              src={src}
+              alt={alt}
+              loading="lazy"
+              className="size-full object-cover"
+              draggable={false}
+            />
+          )}
+        </button>
+        {gif && (
+          <FavoriteStar
+            gif={{
+              url: src,
+              preview: src,
+              width: width ?? 0,
+              height: height ?? 0,
+            }}
+            className="absolute top-2 right-2 group-hover/media:opacity-100"
+          />
+        )}
+      </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           showCloseButton={false}
@@ -144,6 +170,7 @@ export function Attachments({ attachments }: { attachments: Attachment[] }) {
               alt={a.filename}
               width={a.width}
               height={a.height}
+              gif={type === "image/gif"}
             />
           )
         } else if (type.startsWith("video/")) {

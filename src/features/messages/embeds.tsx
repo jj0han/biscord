@@ -4,6 +4,10 @@ import { useState } from "react"
 import { fitMedia, ZoomableImage } from "@/features/messages/attachments"
 import type { Embed } from "@/lib/types"
 
+function isGifUrl(url: string) {
+  return /\.gif($|\?)/i.test(url)
+}
+
 function colorOf(embed: Embed) {
   return embed.color !== undefined
     ? `#${embed.color.toString(16).padStart(6, "0")}`
@@ -75,6 +79,7 @@ function EmbedCard({ embed }: { embed: Embed }) {
         alt=""
         width={embed.image.width}
         height={embed.image.height}
+        gif={embed.type === "gifv" || isGifUrl(embed.image.url)}
       />
     )
   }
@@ -141,6 +146,7 @@ function EmbedCard({ embed }: { embed: Embed }) {
               width={embed.image.width}
               height={embed.image.height}
               className="max-w-100"
+              gif={isGifUrl(embed.image.url)}
             />
           )}
         </div>

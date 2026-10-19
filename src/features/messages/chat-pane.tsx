@@ -164,16 +164,21 @@ export function ChatPane({
                 welcome={welcome}
                 unreadSince={unreadSince}
               />
-              <Composer
-                ref={composerRef}
-                placeholder={placeholder}
-                onTyping={notifyTyping}
-                onStopTyping={stopTyping}
-              />
-              <TypingIndicator
-                userIds={typingUserIds.filter((id) => id !== userId)}
-                serverId={serverId}
-              />
+              {/* bottom edge lines up with the floating user card (8px) */}
+              <div className="relative pb-2">
+                <div className="absolute inset-x-0 bottom-full">
+                  <TypingIndicator
+                    userIds={typingUserIds.filter((id) => id !== userId)}
+                    serverId={serverId}
+                  />
+                </div>
+                <Composer
+                  ref={composerRef}
+                  placeholder={placeholder}
+                  onTyping={notifyTyping}
+                  onStopTyping={stopTyping}
+                />
+              </div>
               {dragging && permissions.canAttach && (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/60">
                   <div className="flex w-80 flex-col items-center gap-2 rounded-xl bg-primary p-6 text-center text-primary-foreground">

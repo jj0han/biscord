@@ -1,5 +1,14 @@
-import { GifIcon, MagnifyingGlassIcon } from "@phosphor-icons/react"
-import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query"
+import {
+  GifIcon,
+  MagnifyingGlassIcon,
+  StarIcon,
+  TrendUpIcon,
+} from "@phosphor-icons/react"
+import {
+  infiniteQueryOptions,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query"
 import { useDeferredValue, useState } from "react"
 
 import {
@@ -8,9 +17,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  favoriteGifsQuery,
+  useFavoriteGif,
+} from "@/features/messages/favorite-gifs"
 import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
-export type Gif = {
+type GiphyGif = {
   id: string
   title: string
   url: string
@@ -21,6 +35,9 @@ export type Gif = {
   previewHeight: number
 }
 
+/** What gets sent when a GIF is picked. */
+export type Gif = { url: string; width: number; height: number }
+
 const PAGE = 30
 
 function gifsQuery(term: string) {
@@ -28,10 +45,9 @@ function gifsQuery(term: string) {
     queryKey: ["gifs", term],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await supabase.functions.invoke<{ gifs: Gif[] }>(
-        "gifs",
-        { body: { query: term, offset: pageParam } }
-      )
+      const { data, error } = await supabase.functions.invoke<{
+        gifs: GiphyGif[]
+      }>("gifs", { body: { query: term, offset: pageParam } })
       if (error) throw error
       return data?.gifs ?? []
     },
@@ -41,12 +57,113 @@ function gifsQuery(term: string) {
   })
 }
 
-function GifGrid({
+/** Star toggle shown on a GIF (picker tiles and GIFs in chat). */
+export function FavoriteStar({
+  gif,
+  className,
+}: {
+  gif: { url: string; preview: string; width: number; height: number }
+  className?: string
+}) {
+  const { favorite, toggle } = useFavoriteGif(gif.url)
+  return (
+    <button
+      type="button"
+      aria-label={
+        favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"
+      }
+      onClick={(e) => {
+        e.stopPropagation()
+        void toggle(gif)
+      }}
+      className={cn(
+        "flex size-7 items-center justify-center rounded-md bg-black/60 text-white transition-opacity hover:text-warning",
+        favorite ? "text-warning opacity-100" : "opacity-0",
+        className
+      )}
+    >
+      <StarIcon weight={favorite ? "fill" : "bold"} className="size-4" />
+    </button>
+  )
+}
+
+type Tile = {
+  key: string
+  url: string
+  preview: string
+  width: number
+  height: number
+  ratio: number
+  title: string
+}
+
+function TileGrid({
+  tiles,
+  onPick,
+  onScrollEnd,
+  footer,
+}: {
+  tiles: Tile[]
+  onPick: (tile: Tile) => void
+  onScrollEnd?: () => void
+  footer?: React.ReactNode
+}) {
+  return (
+    <div
+      className="flex-1 scrollbar-thin overflow-y-auto p-2"
+      onScroll={(e) => {
+        const el = e.currentTarget
+        if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+          onScrollEnd?.()
+        }
+      }}
+    >
+      <div className="columns-2 gap-2">
+        {tiles.map((tile) => (
+          <div
+            key={tile.key}
+            className="group/gif relative mb-2 overflow-hidden rounded-md bg-card"
+            style={{ aspectRatio: tile.ratio }}
+          >
+            <button
+              type="button"
+              title={tile.title}
+              onClick={() => onPick(tile)}
+              className="block size-full ring-primary ring-inset hover:ring-2"
+            >
+              <img
+                src={tile.preview}
+                alt={tile.title}
+                loading="lazy"
+                className="size-full object-cover"
+              />
+            </button>
+            <FavoriteStar
+              gif={tile}
+              className="absolute top-1 right-1 group-hover/gif:opacity-100"
+            />
+          </div>
+        ))}
+      </div>
+      {footer}
+    </div>
+  )
+}
+
+function Message({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+      {children}
+    </div>
+  )
+}
+
+function SearchResults({
   term,
   onPick,
 }: {
   term: string
-  onPick: (gif: Gif) => void
+  onPick: (tile: Tile) => void
 }) {
   const {
     data,
@@ -56,72 +173,77 @@ function GifGrid({
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery(gifsQuery(term))
-  const gifs = data?.pages.flat() ?? []
 
   if (isPending) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <Message>
         <Spinner />
-      </div>
+      </Message>
     )
   }
   if (isError) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+      <Message>
         Não foi possível carregar os GIFs. Confira se a GIPHY_API_KEY está
         configurada nas edge functions.
-      </div>
-    )
-  }
-  if (gifs.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Nenhum GIF encontrado.
-      </div>
+      </Message>
     )
   }
 
+  const tiles: Tile[] = data.pages.flat().map((gif) => ({
+    key: gif.id,
+    url: gif.url,
+    preview: gif.preview,
+    width: gif.width,
+    height: gif.height,
+    ratio: gif.previewWidth / gif.previewHeight || 1,
+    title: gif.title,
+  }))
+  if (tiles.length === 0) return <Message>Nenhum GIF encontrado.</Message>
+
   return (
-    <div
-      className="flex-1 scrollbar-thin overflow-y-auto p-2"
-      onScroll={(e) => {
-        const el = e.currentTarget
-        if (
-          hasNextPage &&
-          !isFetchingNextPage &&
-          el.scrollHeight - el.scrollTop - el.clientHeight < 300
-        ) {
-          void fetchNextPage()
-        }
+    <TileGrid
+      tiles={tiles}
+      onPick={onPick}
+      onScrollEnd={() => {
+        if (hasNextPage && !isFetchingNextPage) void fetchNextPage()
       }}
-    >
-      <div className="columns-2 gap-2">
-        {gifs.map((gif) => (
-          <button
-            key={gif.id}
-            type="button"
-            title={gif.title}
-            onClick={() => onPick(gif)}
-            className="mb-2 block w-full overflow-hidden rounded-md bg-card ring-primary transition-shadow hover:ring-2"
-            style={{
-              aspectRatio: `${gif.previewWidth} / ${gif.previewHeight}`,
-            }}
-          >
-            <img
-              src={gif.preview}
-              alt={gif.title}
-              loading="lazy"
-              className="size-full object-cover"
-            />
-          </button>
-        ))}
-      </div>
-      {isFetchingNextPage && (
-        <div className="flex justify-center py-2">
-          <Spinner />
-        </div>
-      )}
-    </div>
+      footer={
+        isFetchingNextPage && (
+          <div className="flex justify-center py-2">
+            <Spinner />
+          </div>
+        )
+      }
+    />
+  )
+}
+
+function Favorites({ onPick }: { onPick: (tile: Tile) => void }) {
+  const { data, isPending } = useQuery(favoriteGifsQuery)
+  if (isPending) {
+    return (
+      <Message>
+        <Spinner />
+      </Message>
+    )
+  }
+  if (!data?.length) {
+    return <Message>Clique na estrela de um GIF para salvá-lo aqui.</Message>
+  }
+  return (
+    <TileGrid
+      tiles={data.map((gif) => ({
+        key: gif.url,
+        url: gif.url,
+        preview: gif.preview,
+        width: gif.width,
+        height: gif.height,
+        ratio: gif.width && gif.height ? gif.width / gif.height : 1,
+        title: "",
+      }))}
+      onPick={onPick}
+    />
   )
 }
 
@@ -129,13 +251,20 @@ function GifGrid({
 export function GifPicker({ onPick }: { onPick: (gif: Gif) => void }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
+  const [tab, setTab] = useState<"favorites" | "trending">("trending")
   const term = useDeferredValue(query.trim())
+
+  const pick = (tile: Tile) => {
+    setOpen(false)
+    setQuery("")
+    onPick({ url: tile.url, width: tile.width, height: tile.height })
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label="Abrir seletor de GIF"
-        className="mt-3 text-interactive transition-colors hover:text-interactive-hover data-popup-open:text-header"
+        className="mt-4 text-interactive transition-colors hover:text-interactive-hover data-popup-open:text-header"
       >
         <GifIcon className="size-6" />
       </PopoverTrigger>
@@ -145,7 +274,7 @@ export function GifPicker({ onPick }: { onPick: (gif: Gif) => void }) {
         sideOffset={16}
         className="h-110 w-105 gap-0 overflow-hidden rounded-lg border border-border bg-sidebar p-0"
       >
-        <div className="border-b border-border p-3">
+        <div className="flex flex-col gap-2 border-b border-border p-3">
           <div className="flex h-8 items-center gap-2 rounded-md bg-input px-2">
             <input
               value={query}
@@ -156,15 +285,35 @@ export function GifPicker({ onPick }: { onPick: (gif: Gif) => void }) {
             />
             <MagnifyingGlassIcon className="size-4 text-interactive" />
           </div>
+          {!term && (
+            <div className="flex gap-1">
+              {(
+                [
+                  { key: "favorites", label: "Favoritos", icon: StarIcon },
+                  { key: "trending", label: "Em alta", icon: TrendUpIcon },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setTab(option.key)}
+                  className={cn(
+                    "flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-interactive hover:bg-hover hover:text-interactive-hover",
+                    tab === option.key && "bg-selected text-header"
+                  )}
+                >
+                  <option.icon className="size-4" />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <GifGrid
-          term={term}
-          onPick={(gif) => {
-            setOpen(false)
-            setQuery("")
-            onPick(gif)
-          }}
-        />
+        {term || tab === "trending" ? (
+          <SearchResults term={term} onPick={pick} />
+        ) : (
+          <Favorites onPick={pick} />
+        )}
       </PopoverContent>
     </Popover>
   )

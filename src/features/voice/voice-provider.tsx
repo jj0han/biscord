@@ -270,7 +270,7 @@ function VoiceBridge() {
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { data: servers } = useQuery(serversQuery)
-  const { connection, muted, deafened } = useVoice()
+  const { connection } = useVoice()
 
   const scopes = useMemo(
     () => [DM_SCOPE, ...(servers ?? []).map((server) => server.id)].sort(),
@@ -284,7 +284,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       serverUrl={connection?.url}
       token={connection?.token}
       connect={!!connection}
-      audio={!muted && !deafened}
+      // the mic is driven only by VoiceBridge (mute, deafen, push-to-talk), so
+      // joining while muted never publishes an open mic, even for a moment
+      audio={false}
       video={connection?.video ?? false}
       options={{
         adaptiveStream: true,

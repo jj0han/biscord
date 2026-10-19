@@ -271,7 +271,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
             onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
             onKeyDown={handleKeyDown}
             onPaste={onPaste}
-            className="max-h-[50vh] min-h-12 flex-1 resize-none scrollbar-thin bg-transparent py-3 leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+            className="max-h-[50vh] min-h-14 flex-1 resize-none scrollbar-thin bg-transparent py-4 leading-6 text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           />
           {trailing}
         </div>

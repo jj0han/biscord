@@ -208,8 +208,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
 
     if (!chat.canSend) {
       return (
-        <div className="px-4 pb-6">
-          <div className="flex min-h-11 items-center rounded-lg bg-composer px-4 text-muted-foreground">
+        <div className="px-4">
+          <div className="flex min-h-14 items-center rounded-lg border border-border bg-composer px-4 text-muted-foreground">
             Você não tem permissão para enviar mensagens neste canal.
           </div>
         </div>
@@ -337,7 +337,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
               aria-label="Enviar arquivo"
               disabled={!chat.canAttach}
               onClick={() => fileRef.current?.click()}
-              className="mt-3 -ml-1 text-interactive transition-colors hover:text-interactive-hover disabled:opacity-40"
+              className="mt-4 -ml-1 text-interactive transition-colors hover:text-interactive-hover disabled:opacity-40"
             >
               {uploading ? (
                 <Spinner className="size-6" />
@@ -365,7 +365,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
                 <button
                   type="button"
                   aria-label="Selecionar emoji"
-                  className="mt-3 text-interactive transition-colors hover:text-warning"
+                  className="mt-4 text-interactive transition-colors hover:text-warning"
                 >
                   <SmileyIcon className="size-6" />
                 </button>

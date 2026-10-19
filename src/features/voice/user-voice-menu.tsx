@@ -29,12 +29,15 @@ export function UserVoiceMenu({
   userId,
   serverId,
   stream = false,
+  voice = true,
   children,
 }: {
   userId: string
   serverId: string | null
   /** opened on their stream: the slider controls the stream, not the voice */
   stream?: boolean
+  /** show the call controls (volume, local mute); off outside of calls */
+  voice?: boolean
   children: ReactElement
 }) {
   const me = useUserId()
@@ -57,8 +60,10 @@ export function UserVoiceMenu({
             Perfil
           </ContextMenuItem>
           {!isMe && (
+            <ContextMenuItem onClick={message}>Mensagem</ContextMenuItem>
+          )}
+          {!isMe && voice && (
             <>
-              <ContextMenuItem onClick={message}>Mensagem</ContextMenuItem>
               <ContextMenuSeparator />
               <div className="flex flex-col gap-2 px-2 py-1.5">
                 <span className="text-sm font-medium text-header">

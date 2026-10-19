@@ -5,9 +5,9 @@ import { toast } from "sonner"
 import { z } from "zod"
 
 import { BiscordLogo } from "@/components/biscord-logo"
+import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Spinner } from "@/components/ui/spinner"
 import {
   signInAsGuest,
   signInWithDiscord,

@@ -1,12 +1,12 @@
 import { EmojiPicker } from "frimousse"
 import { type ReactElement, useState } from "react"
 
+import { Spinner } from "@/components/spinner"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Spinner } from "@/components/ui/spinner"
 
 type EmojiPickerPopoverProps = {
   onSelect: (emoji: string) => void

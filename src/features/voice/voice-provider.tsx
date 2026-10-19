@@ -1,6 +1,7 @@
 import {
   LiveKitRoom,
   RoomAudioRenderer,
+  useAudioPlayback,
   useConnectionState,
   useLocalParticipant,
   useRemoteParticipants,
@@ -141,20 +142,25 @@ function useMicPipeline(connected: boolean, audio: AudioSettings) {
   const { localParticipant, microphoneTrack } = useLocalParticipant()
   const track = microphoneTrack?.track as LocalAudioTrack | undefined
 
+  const denoise = audio.advancedNoiseSuppression
   useEffect(() => {
-    if (!connected || !track || track.getProcessor()) return
+    if (!connected || !track) return
+    // rebuilt when RNNoise is toggled; setProcessor swaps the old one out
     void track
       .setProcessor(
-        new MicProcessor(() => {
-          const current = audioSettingsStore.get()
-          return {
-            volume: current.inputVolume,
-            threshold: effectiveThreshold(current),
-          }
-        })
+        new MicProcessor(
+          () => {
+            const current = audioSettingsStore.get()
+            return {
+              volume: current.inputVolume,
+              threshold: effectiveThreshold(current),
+            }
+          },
+          { denoise }
+        )
       )
       .catch(() => undefined)
-  }, [connected, track])
+  }, [connected, track, denoise])
 
   const { noiseSuppression, echoCancellation, autoGainControl } = audio
   useEffect(() => {
@@ -272,6 +278,14 @@ function VoiceBridge() {
     if (connected) playSound("join")
   }, [connected])
 
+  // The webview may block audio until a user gesture: unlock it as soon as
+  // we join (joining is a click), and offer a button if it's still blocked.
+  const room = useRoomContext()
+  const { canPlayAudio, startAudio } = useAudioPlayback(room)
+  useEffect(() => {
+    if (connected) void room.startAudio().catch(() => undefined)
+  }, [connected, room])
+
   useEffect(() => {
     if (!connected) return
     void localParticipant
@@ -323,7 +337,29 @@ function VoiceBridge() {
     }
   }, [connected, connection])
 
-  return <RoomAudioRenderer muted={deafened} />
+  return (
+    <>
+      <RoomAudioRenderer muted={deafened} />
+      {connected && !canPlayAudio && (
+        <button
+          type="button"
+          onClick={() => void startAudio()}
+          className="fixed top-12 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-warning px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg"
+        >
+          O áudio da chamada está bloqueado. Clique para ativar.
+        </button>
+      )}
+    </>
+  )
+}
+
+let audioContext: AudioContext | undefined
+function callAudioContext() {
+  audioContext ??= new AudioContext({
+    sampleRate: 48000,
+    latencyHint: "interactive",
+  })
+  return audioContext
 }
 
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
@@ -356,7 +392,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         },
         dynacast: true,
         // lets per-user and output volume go above 100%
-        webAudioMix: true,
+        // a 48 kHz context so RNNoise can run in the mic processor
+        webAudioMix: { audioContext: callAudioContext() },
         audioCaptureDefaults: {
           deviceId: audioDevice("audioinput"),
           echoCancellation: audioSettingsStore.get().echoCancellation,

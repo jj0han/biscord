@@ -257,8 +257,16 @@ export function VoiceSection() {
 
       <div className="flex flex-col gap-6">
         <ToggleRow
-          title="Supressão de ruído"
-          hint="Reduz o ruído de fundo do seu microfone."
+          title="Isolamento de voz (RNNoise)"
+          hint="Uma rede neural remove teclado, ventilador e outros ruídos e deixa só a sua voz."
+          checked={audio.advancedNoiseSuppression}
+          onChange={(advancedNoiseSuppression) =>
+            updateAudioSettings({ advancedNoiseSuppression })
+          }
+        />
+        <ToggleRow
+          title="Supressão de ruído do navegador"
+          hint="O filtro padrão do navegador. Mais simples; costuma abafar a voz."
           checked={audio.noiseSuppression}
           onChange={(noiseSuppression) =>
             updateAudioSettings({ noiseSuppression })

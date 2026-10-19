@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { forwardRef, useImperativeHandle, useRef, useState } from "react"
 import { toast } from "sonner"
 
-import { Spinner } from "@/components/ui/spinner"
+import { Spinner } from "@/components/spinner"
 import { useUserId } from "@/features/auth/auth-provider"
 import { useChat } from "@/features/messages/chat-context"
 import { EmojiPickerPopover } from "@/features/messages/emoji-picker"

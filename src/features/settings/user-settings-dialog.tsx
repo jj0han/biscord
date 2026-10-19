@@ -1,9 +1,11 @@
 import {
   BellIcon,
+  DesktopIcon,
   DiscordLogoIcon,
   MicrophoneIcon,
   PaintBrushIcon,
   PencilSimpleIcon,
+  PersonArmsSpreadIcon,
   SignOutIcon,
   UserIcon,
 } from "@phosphor-icons/react"
@@ -25,13 +27,22 @@ import {
 import { GuildTag, ProfileBanner } from "@/features/profiles/profile-popover"
 import { useProfile } from "@/features/profiles/queries"
 import { requestNotificationPermission } from "@/features/realtime/notifications"
+import { AccessibilitySection } from "@/features/settings/accessibility-section"
 import { setMidnight, useMidnight } from "@/features/settings/appearance"
+import { SystemSection } from "@/features/settings/system-section"
 import { VoiceSection } from "@/features/settings/voice-section"
 import { displayName, formatMemberSince } from "@/lib/format"
+import { isDesktop } from "@/lib/platform"
 import { playSound, setSoundsEnabled, useSoundsEnabled } from "@/lib/sounds"
 import { cn } from "@/lib/utils"
 
-export type SettingsTab = "account" | "appearance" | "voice" | "notifications"
+export type SettingsTab =
+  | "account"
+  | "appearance"
+  | "accessibility"
+  | "voice"
+  | "notifications"
+  | "system"
 
 function SettingsUserCard({ onClick }: { onClick: () => void }) {
   const userId = useUserId()
@@ -100,6 +111,12 @@ function UserSettings({
           group: "Experiência",
         },
         {
+          key: "accessibility",
+          label: "Acessibilidade",
+          icon: <PersonArmsSpreadIcon />,
+          group: "Experiência",
+        },
+        {
           key: "voice",
           label: "Voz e vídeo",
           icon: <MicrophoneIcon />,
@@ -111,6 +128,16 @@ function UserSettings({
           icon: <BellIcon />,
           group: "Experiência",
         },
+        ...(isDesktop
+          ? [
+              {
+                key: "system" as const,
+                label: "Configurações do Windows",
+                icon: <DesktopIcon />,
+                group: "Experiência",
+              },
+            ]
+          : []),
         {
           key: "logout",
           label: "Sair",
@@ -133,8 +160,10 @@ function UserSettings({
     >
       {active === "account" && <AccountSection />}
       {active === "appearance" && <AppearanceSection />}
+      {active === "accessibility" && <AccessibilitySection />}
       {active === "voice" && <VoiceSection />}
       {active === "notifications" && <NotificationsSection />}
+      {active === "system" && <SystemSection />}
     </SettingsLayout>
   )
 }

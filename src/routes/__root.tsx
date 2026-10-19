@@ -7,6 +7,7 @@ import {
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools"
 
 import { WindowControls } from "@/features/layout/title-bar"
+import { useDeepLinkNavigation } from "@/lib/deep-link-navigation"
 import { isDesktop } from "@/lib/platform"
 
 type RouterContext = {
@@ -28,6 +29,7 @@ function BareWindowBar() {
 function RootLayout() {
   const { pathname } = useLocation()
   const inShell = pathname.startsWith("/channels")
+  useDeepLinkNavigation()
 
   return (
     <div className="flex h-full flex-col">

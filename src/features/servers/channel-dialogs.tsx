@@ -4,11 +4,11 @@ import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 
+import { AppDialogContent } from "@/components/app-dialog"
 import { SettingsLabel, SettingsLayout } from "@/components/settings-layout"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -96,7 +96,7 @@ export function CreateChannelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <AppDialogContent>
         <form onSubmit={submit} className="flex flex-col gap-6">
           <DialogHeader>
             <DialogTitle className="text-xl text-header">
@@ -184,7 +184,7 @@ export function CreateChannelDialog({
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }

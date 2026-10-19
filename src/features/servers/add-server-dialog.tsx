@@ -4,11 +4,12 @@ import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 
+import { AppDialogContent } from "@/components/app-dialog"
 import { ImagePicker } from "@/components/image-picker"
+import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -16,7 +17,6 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Spinner } from "@/components/ui/spinner"
 import { useUserId } from "@/features/auth/auth-provider"
 import { useProfile } from "@/features/profiles/queries"
 import { createServer, uploadFile } from "@/features/servers/queries"
@@ -41,7 +41,7 @@ export function AddServerDialog({ open, onOpenChange }: AddServerDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogContent className="sm:max-w-110">
+      <AppDialogContent className="sm:max-w-110">
         {step === "choose" && <ChooseStep onPick={setStep} />}
         {step === "create" && (
           <CreateStep
@@ -55,7 +55,7 @@ export function AddServerDialog({ open, onOpenChange }: AddServerDialogProps) {
             onDone={() => change(false)}
           />
         )}
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }

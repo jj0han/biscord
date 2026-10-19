@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
 import { STATUS_LABEL, StatusDot, UserAvatar } from "@/components/user-avatar"
 import { useUserId } from "@/features/auth/auth-provider"
+import { StyledName } from "@/features/profiles/discord-extras"
 import { ProfileBanner } from "@/features/profiles/profile-popover"
 import { updateMyStatus, useProfile } from "@/features/profiles/queries"
 import { usePresence } from "@/features/realtime/presence"
@@ -175,7 +176,7 @@ export function UserPanel() {
           />
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-sm leading-tight font-semibold text-header">
-              {displayName(me)}
+              <StyledName profile={me} name={displayName(me)} />
             </span>
             <span className="truncate text-xs leading-tight text-muted-foreground">
               {me?.custom_status ||

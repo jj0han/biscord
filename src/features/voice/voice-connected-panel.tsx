@@ -2,6 +2,7 @@ import {
   useConnectionQualityIndicator,
   useConnectionState,
   useLocalParticipant,
+  useRoomContext,
 } from "@livekit/components-react"
 import {
   CellSignalFullIcon,
@@ -15,6 +16,7 @@ import {
 } from "@phosphor-icons/react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { ConnectionQuality, ConnectionState } from "livekit-client"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { TooltipContent } from "@/components/tooltip-content"
@@ -45,18 +47,57 @@ export function useMediaToggles() {
   return { isCameraEnabled, isScreenShareEnabled, toggleCamera }
 }
 
+/** Round trip to the LiveKit server, refreshed every couple of seconds. */
+function usePing() {
+  const room = useRoomContext()
+  const [ping, setPing] = useState(0)
+  useEffect(() => {
+    const read = () => setPing(Math.round(room.engine.client.rtt))
+    read()
+    const timer = setInterval(read, 2000)
+    return () => clearInterval(timer)
+  }, [room])
+  return ping
+}
+
+const QUALITY_LABEL: Partial<Record<ConnectionQuality, string>> = {
+  [ConnectionQuality.Excellent]: "Conexão excelente",
+  [ConnectionQuality.Good]: "Conexão boa",
+  [ConnectionQuality.Poor]: "Conexão ruim",
+  [ConnectionQuality.Lost]: "Conexão perdida",
+}
+
 function SignalIcon() {
   const { localParticipant } = useLocalParticipant()
   const { quality } = useConnectionQualityIndicator({
     participant: localParticipant,
   })
-  if (quality === ConnectionQuality.Poor) {
-    return <CellSignalLowIcon className="size-5 text-danger" />
-  }
-  if (quality === ConnectionQuality.Good) {
-    return <CellSignalMediumIcon className="size-5 text-warning" />
-  }
-  return <CellSignalFullIcon className="size-5 text-success" />
+  const ping = usePing()
+
+  const icon =
+    quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost ? (
+      <CellSignalLowIcon className="size-5 text-danger" />
+    ) : quality === ConnectionQuality.Good ? (
+      <CellSignalMediumIcon className="size-5 text-warning" />
+    ) : (
+      <CellSignalFullIcon className="size-5 text-success" />
+    )
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<span className="flex shrink-0 cursor-default" />}
+      >
+        {icon}
+      </TooltipTrigger>
+      <TooltipContent className="flex flex-col items-start">
+        <span>{QUALITY_LABEL[quality] ?? "Conectado"}</span>
+        <span className="text-xs text-muted-foreground">
+          Ping: {ping > 0 ? `${ping} ms` : "medindo…"}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 function ActionButton({

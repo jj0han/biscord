@@ -1,13 +1,13 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
 
+import { Spinner } from "@/components/spinner"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Spinner } from "@/components/ui/spinner"
 import { MessagePreview } from "@/features/messages/pins-popover"
 import { searchQuery } from "@/features/messages/queries"
 
@@ -33,7 +33,7 @@ export function SearchBox({
           aria-label="Limpar busca"
           onClick={() => onChange("")}
         >
-          <XIcon className="size-4 text-interactive" />
+          <XIcon weight="bold" className="size-4 text-interactive" />
         </button>
       ) : (
         <MagnifyingGlassIcon className="size-4 text-interactive" />

@@ -1,23 +1,54 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import { ServerIcon } from "@/components/server-icon"
+import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
 import { useAuth } from "@/features/auth/auth-provider"
 import { SplashScreen } from "@/features/layout/splash-screen"
 import { acceptInvite, invitePreviewQuery } from "@/features/servers/queries"
+import { isDesktop } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
 
 export const Route = createFileRoute("/invite/$code")({
   component: Invite,
 })
 
+/**
+ * In the browser, hands the invite to the desktop app when it's installed
+ * (Chromium asks "Abrir Biscord?"; without the app nothing happens).
+ */
+function useOpenInApp(code: string) {
+  useEffect(() => {
+    if (isDesktop || !("userAgentData" in navigator)) return
+    const key = `invite-opened:${code}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, "1")
+    window.location.href = `biscord://invite/${code}`
+  }, [code])
+}
+
+function OpenInAppBar({ code }: { code: string }) {
+  if (isDesktop) return null
+  return (
+    <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-3 bg-card p-2 text-sm">
+      <span className="text-muted-foreground">Tem o Biscord instalado?</span>
+      <a
+        href={`biscord://invite/${code}`}
+        className="font-semibold text-link hover:underline"
+      >
+        Abrir no app
+      </a>
+    </div>
+  )
+}
+
 function Invite() {
   const { code } = Route.useParams()
   const { session, loading } = useAuth()
+  useOpenInApp(code)
 
   if (loading) return <SplashScreen />
   if (!session) {
@@ -25,7 +56,12 @@ function Invite() {
       <Navigate to="/login" search={{ redirect: `/invite/${code}` }} replace />
     )
   }
-  return <InviteCard code={code} />
+  return (
+    <>
+      <OpenInAppBar code={code} />
+      <InviteCard code={code} />
+    </>
+  )
 }
 
 function InviteCard({ code }: { code: string }) {

@@ -6,7 +6,11 @@ import {
   effectiveThreshold,
 } from "@/features/voice/audio-settings"
 import { audioDevice } from "@/features/voice/devices"
-import { micLevelStore, rmsToDb } from "@/features/voice/mic-processor"
+import {
+  createRnnoise,
+  micLevelStore,
+  rmsToDb,
+} from "@/features/voice/mic-processor"
 import { useVoice } from "@/features/voice/voice-store"
 import { cn } from "@/lib/utils"
 
@@ -100,18 +104,25 @@ export function useMicLevel(active: boolean, loopback = false) {
           autoGainControl: settings.autoGainControl,
         },
       })
-      .then((media) => {
+      .then(async (media) => {
         if (cancelled) {
           media.getTracks().forEach((t) => t.stop())
           return
         }
         stream = media
-        context = new AudioContext()
+        // 48 kHz so the mic test can run RNNoise, like the real call
+        context = new AudioContext({ sampleRate: 48000 })
         const source = context.createMediaStreamSource(media)
         const gain = context.createGain()
         const analyser = context.createAnalyser()
         analyser.fftSize = 1024
-        source.connect(gain).connect(analyser)
+        const denoise = settings.advancedNoiseSuppression
+          ? await createRnnoise(context)
+          : undefined
+        if (cancelled) return
+        if (denoise) source.connect(denoise).connect(gain)
+        else source.connect(gain)
+        gain.connect(analyser)
         if (loopback) gain.connect(context.destination)
         const buffer = new Float32Array(analyser.fftSize)
         timer = setInterval(() => {

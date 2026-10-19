@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { createContext, use, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
+import { openPath, pathFromDeepLink } from "@/lib/deep-link-navigation"
 import { isDesktop } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
 import { supabase } from "@/lib/supabase"
@@ -88,7 +89,7 @@ export async function signInWithDiscord(redirectPath = "/channels/@me") {
     return supabase.auth.signInWithOAuth({
       provider: "discord",
       options: {
-        scopes: "identify email",
+        scopes: "identify email connections",
         redirectTo: `${window.location.origin}${redirectPath}`,
       },
     })
@@ -99,7 +100,7 @@ export async function signInWithDiscord(redirectPath = "/channels/@me") {
   const result = await supabase.auth.signInWithOAuth({
     provider: "discord",
     options: {
-      scopes: "identify email",
+      scopes: "identify email connections",
       redirectTo: DESKTOP_REDIRECT,
       skipBrowserRedirect: true,
     },
@@ -111,9 +112,18 @@ export async function signInWithDiscord(redirectPath = "/channels/@me") {
   return result
 }
 
-/** Finishes the PKCE flow when the browser hands the code back to the app. */
+/**
+ * Handles biscord:// links: finishes the PKCE flow when the browser hands the
+ * code back to the app, and opens invite links in the app.
+ */
 async function handleDeepLinks(urls: string[]) {
   for (const raw of urls) {
+    // biscord://invite/<code> from an invite link opened in the browser
+    const path = pathFromDeepLink(raw)
+    if (path) {
+      openPath(path)
+      continue
+    }
     if (!raw.startsWith(DESKTOP_REDIRECT)) continue
     const url = new URL(raw)
     const error = url.searchParams.get("error_description")
@@ -184,7 +194,7 @@ export async function linkDiscord(redirectPath = window.location.pathname) {
     return supabase.auth.linkIdentity({
       provider: "discord",
       options: {
-        scopes: "identify email",
+        scopes: "identify email connections",
         redirectTo: `${window.location.origin}${redirectPath}`,
       },
     })
@@ -192,7 +202,7 @@ export async function linkDiscord(redirectPath = window.location.pathname) {
   const result = await supabase.auth.linkIdentity({
     provider: "discord",
     options: {
-      scopes: "identify email",
+      scopes: "identify email connections",
       redirectTo: DESKTOP_REDIRECT,
       skipBrowserRedirect: true,
     },

@@ -1,8 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { type ReactNode, useMemo, useRef } from "react"
 
+import { Spinner } from "@/components/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@/components/ui/spinner"
 import { MessageItem } from "@/features/messages/message-item"
 import { messagesQuery } from "@/features/messages/queries"
 import { formatDayDivider, isSameDayAs, minutesBetween } from "@/lib/format"

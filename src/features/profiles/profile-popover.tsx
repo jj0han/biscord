@@ -12,6 +12,7 @@ import { STATUS_LABEL, UserAvatar } from "@/components/user-avatar"
 import { useUserId } from "@/features/auth/auth-provider"
 import { openDm } from "@/features/dms/queries"
 import { sendMessage } from "@/features/messages/queries"
+import { ProfileBadges, StyledName } from "@/features/profiles/discord-extras"
 import { ProfileModal } from "@/features/profiles/profile-modal"
 import { useProfile } from "@/features/profiles/queries"
 import { usePresence } from "@/features/realtime/presence"
@@ -127,12 +128,13 @@ export function ProfileCard({
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl leading-tight font-bold text-header">
-              {name}
+              <StyledName profile={profile} name={name} />
             </h2>
             <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
               <span>{profile.username}</span>
               <GuildTag profile={profile} />
             </div>
+            <ProfileBadges profile={profile} />
             <span className="text-xs text-muted-foreground">
               {STATUS_LABEL[status]}
             </span>

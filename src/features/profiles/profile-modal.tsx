@@ -34,6 +34,11 @@ import {
   openDm,
   sendFriendRequest,
 } from "@/features/dms/queries"
+import {
+  ProfileBadges,
+  ProfileConnections,
+  StyledName,
+} from "@/features/profiles/discord-extras"
 import { GuildTag, ProfileBanner } from "@/features/profiles/profile-popover"
 import { useProfile } from "@/features/profiles/queries"
 import { usePresence } from "@/features/realtime/presence"
@@ -237,12 +242,16 @@ function ProfileModalContent({
           </div>
           <div className="flex flex-col gap-1">
             <h2 className="text-2xl leading-tight font-bold text-header">
-              {displayName(profile, member?.nickname)}
+              <StyledName
+                profile={profile}
+                name={displayName(profile, member?.nickname)}
+              />
             </h2>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span>{profile.username}</span>
               <GuildTag profile={profile} />
             </div>
+            <ProfileBadges profile={profile} />
           </div>
 
           {!isMe && (
@@ -312,6 +321,12 @@ function ProfileModalContent({
           {friendship && (
             <Section title="Amigos desde">
               <span>{formatMemberSince(friendship.created_at)}</span>
+            </Section>
+          )}
+
+          {profile.connections?.length > 0 && (
+            <Section title="Conexões">
+              <ProfileConnections profile={profile} />
             </Section>
           )}
 

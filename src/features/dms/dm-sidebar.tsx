@@ -4,12 +4,12 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
+import { AppDialogContent } from "@/components/app-dialog"
 import { TooltipContent } from "@/components/tooltip-content"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -72,7 +72,7 @@ function DmRow({ dm, active }: { dm: DmChannel; active: boolean }) {
       to="/channels/@me/$channelId"
       params={{ channelId: dm.id }}
       className={cn(
-        "flex h-11 items-center gap-3 rounded-md px-2 text-interactive transition-colors hover:bg-hover hover:text-interactive-hover",
+        "flex h-11 items-center gap-3 rounded-md px-2 text-interactive transition-colors hover:bg-hover hover:text-interactive-hover compact:h-9 spacious:h-12",
         active && "bg-selected text-header",
         unread && "text-header"
       )}
@@ -140,7 +140,7 @@ function FriendPicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <AppDialogContent>
         <DialogHeader>
           <DialogTitle className="text-header">{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -195,7 +195,7 @@ function FriendPicker({
             </Button>
           </DialogFooter>
         )}
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }
@@ -248,7 +248,7 @@ export function DmSidebar() {
       <Link
         to="/channels/@me"
         activeOptions={{ exact: true }}
-        className="flex h-11 items-center gap-3 rounded-md px-3 font-medium text-interactive transition-colors hover:bg-hover hover:text-interactive-hover data-[status=active]:bg-selected data-[status=active]:text-header"
+        className="flex h-11 items-center gap-3 rounded-md px-3 font-medium text-interactive transition-colors hover:bg-hover hover:text-interactive-hover data-[status=active]:bg-selected data-[status=active]:text-header compact:h-9 spacious:h-12"
       >
         <UsersIcon className="size-5" />
         <span className="flex-1">Amigos</span>

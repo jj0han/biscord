@@ -17,6 +17,12 @@
     "opener:default",
     "notification:default",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "core:webview:allow-set-webview-zoom",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
+    "core:window:allow-hide",
+    "core:window:allow-show"
   ]
 }

@@ -4,7 +4,9 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 
+import { initAccessibility } from "@/features/settings/accessibility"
 import { initAppearance } from "@/features/settings/appearance"
+import { initDesktopSettings } from "@/features/settings/system-section"
 import { initDesktopLinks } from "@/lib/platform"
 import { initUpdater } from "@/lib/updater"
 import Providers, { queryClient } from "@/providers.tsx"
@@ -12,6 +14,8 @@ import Providers, { queryClient } from "@/providers.tsx"
 import { routeTree } from "./routeTree.gen"
 
 initAppearance()
+initAccessibility()
+initDesktopSettings()
 initDesktopLinks()
 initUpdater()
 

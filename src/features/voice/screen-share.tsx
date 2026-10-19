@@ -164,6 +164,20 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
         }
       )
       playSound("streamStart")
+      // Without restrictOwnAudio the capture also records the call itself, so
+      // everyone would hear their own voice back through the stream.
+      const supported =
+        navigator.mediaDevices.getSupportedConstraints() as Record<
+          string,
+          boolean
+        >
+      if (settings.audio && !supported.restrictOwnAudio) {
+        toast.warning("O áudio da sua transmissão pode incluir a chamada.", {
+          description:
+            "Seu navegador/WebView não consegue excluir o som do Biscord da captura. Atualize o Biscord (ou o navegador) ou transmita uma janela específica.",
+          duration: 10000,
+        })
+      }
     } catch (error) {
       if ((error as Error).name !== "NotAllowedError") {
         toast.error("Não foi possível iniciar a transmissão.")

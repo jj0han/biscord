@@ -1,10 +1,10 @@
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
+import { AppDialogContent } from "@/components/app-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -35,9 +35,9 @@ export function InviteDialog({
 }: InviteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <AppDialogContent>
         {open && <InviteContent serverId={serverId} />}
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }

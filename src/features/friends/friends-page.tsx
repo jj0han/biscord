@@ -418,7 +418,7 @@ export function FriendsPage() {
                           : removeFriend(profile.id)
                       )}
                     >
-                      <XIcon className="size-5" />
+                      <XIcon weight="bold" className="size-5" />
                     </RowAction>
                   </PersonRow>
                 ))}
@@ -435,7 +435,7 @@ export function FriendsPage() {
                       danger
                       onClick={act(() => unblockUser(profile.id))}
                     >
-                      <XIcon className="size-5" />
+                      <XIcon weight="bold" className="size-5" />
                     </RowAction>
                   </PersonRow>
                 ))}

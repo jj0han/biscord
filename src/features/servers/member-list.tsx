@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 
 import { UserAvatar } from "@/components/user-avatar"
+import { ServerActivity } from "@/features/friends/active-now"
+import { StyledName } from "@/features/profiles/discord-extras"
 import { ProfilePopover } from "@/features/profiles/profile-popover"
 import { presenceStore } from "@/features/realtime/presence"
 import {
@@ -9,6 +11,7 @@ import {
   useRoles,
   useServer,
 } from "@/features/servers/queries"
+import { UserVoiceMenu } from "@/features/voice/user-voice-menu"
 import { displayName } from "@/lib/format"
 import { roleColor } from "@/lib/permissions"
 import type { Profile, Role } from "@/lib/types"
@@ -31,36 +34,52 @@ function MemberRow({
   offline: boolean
 }) {
   return (
-    <ProfilePopover userId={row.profile.id} serverId={serverId} side="left">
-      <button
-        type="button"
-        className={cn(
-          "flex h-11 w-full items-center gap-3 rounded-md px-2 text-left transition-colors hover:bg-hover",
-          offline && "opacity-30 hover:opacity-100"
-        )}
-      >
-        <UserAvatar
-          profile={row.profile}
-          size="md"
-          showStatus={!offline}
-          decoration
-        />
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span
-            className="truncate font-medium text-interactive"
-            style={{ color: roleColor(row.color) }}
+    <UserVoiceMenu userId={row.profile.id} serverId={serverId} voice={false}>
+      <div>
+        <ProfilePopover userId={row.profile.id} serverId={serverId} side="left">
+          <button
+            type="button"
+            style={
+              row.profile.nameplate_url
+                ? { backgroundImage: `url(${row.profile.nameplate_url})` }
+                : undefined
+            }
+            className={cn(
+              "flex h-11 w-full items-center gap-3 rounded-md bg-cover bg-right bg-no-repeat px-2 text-left transition-colors hover:bg-hover compact:h-9 spacious:h-13",
+              offline && "opacity-30 hover:opacity-100"
+            )}
           >
-            {displayName(row.profile, row.nickname)}
-            {row.owner && <span className="ml-1 text-warning">♛</span>}
-          </span>
-          {row.profile.custom_status && !offline && (
-            <span className="truncate text-xs text-muted-foreground">
-              {row.profile.custom_status}
+            <UserAvatar
+              profile={row.profile}
+              size="md"
+              showStatus={!offline}
+              decoration
+            />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span
+                className="truncate font-medium text-interactive"
+                style={{ color: roleColor(row.color) }}
+              >
+                {row.color ? (
+                  displayName(row.profile, row.nickname)
+                ) : (
+                  <StyledName
+                    profile={row.profile}
+                    name={displayName(row.profile, row.nickname)}
+                  />
+                )}
+                {row.owner && <span className="ml-1 text-warning">♛</span>}
+              </span>
+              {row.profile.custom_status && !offline && (
+                <span className="truncate text-xs text-muted-foreground">
+                  {row.profile.custom_status}
+                </span>
+              )}
             </span>
-          )}
-        </span>
-      </button>
-    </ProfilePopover>
+          </button>
+        </ProfilePopover>
+      </div>
+    </UserVoiceMenu>
   )
 }
 
@@ -149,6 +168,7 @@ export function MemberList({ serverId }: { serverId: string }) {
 
   return (
     <aside className="flex w-60 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">
+      <ServerActivity serverId={serverId} />
       {groups.hoisted.map(({ role, rows }) => (
         <Section
           key={role.id}

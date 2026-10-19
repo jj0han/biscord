@@ -11,12 +11,12 @@ import {
 } from "@tanstack/react-query"
 import { useDeferredValue, useState } from "react"
 
+import { Spinner } from "@/components/spinner"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Spinner } from "@/components/ui/spinner"
 import {
   favoriteGifsQuery,
   useFavoriteGif,

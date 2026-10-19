@@ -181,6 +181,9 @@ importers:
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@sapphi-red/web-noise-suppressor':
+        specifier: ^0.4.1
+        version: 0.4.1
       '@shadcn/react':
         specifier: ^0.3.1
         version: 0.3.1(@types/react@19.2.16)(react@19.2.7)
@@ -205,6 +208,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2.12.4
         version: 2.12.4
+      '@tauri-apps/plugin-autostart':
+        specifier: ^2.7.0
+        version: 2.7.0
       '@tauri-apps/plugin-deep-link':
         specifier: ^2.6.2
         version: 2.6.2
@@ -1072,6 +1078,9 @@ packages:
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
 
+  '@sapphi-red/web-noise-suppressor@0.4.1':
+    resolution: {integrity: sha512-hy2GnF079+zi4n9BZUf+GGIQ1IofApAk6rgGMyMQ3soHfz/GKu1pcCsmePyIHVvUuv1LrFudw9BmmBqoOKay5w==}
+
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
 
@@ -1480,6 +1489,9 @@ packages:
     resolution: {integrity: sha512-f7/LsY74SVb1ChmOPw1ajOpxii0GSzDAgmWHRci8JUYuuai04rXsSbFobpmB0sP2DdlvMD/B5ZotEn8GOGMRUg==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-autostart@2.7.0':
+    resolution: {integrity: sha512-4uRq+rqKSAh6MWAxgk6FnUPigc8VMG8eDVYTLk3A7OfKs9sLVwfeM8kbUvzjpabRQvyl4zd9tfzXBTrrtuprsA==}
 
   '@tauri-apps/plugin-deep-link@2.6.2':
     resolution: {integrity: sha512-uMsF1VQt1OdYq3jDGsSBlBdtbTp6o7WYFYFnjiNuLfFpBvZsdH0XnolJoSzBOlTzhroROBUys/j1y1PQqdiMZA==}
@@ -4383,6 +4395,8 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.1': {}
 
+  '@sapphi-red/web-noise-suppressor@0.4.1': {}
+
   '@sec-ant/readable-stream@0.4.1': {}
 
   '@shadcn/react@0.3.1(@types/react@19.2.16)(react@19.2.7)':
@@ -4728,6 +4742,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.12.3
       '@tauri-apps/cli-win32-ia32-msvc': 2.12.3
       '@tauri-apps/cli-win32-x64-msvc': 2.12.3
+
+  '@tauri-apps/plugin-autostart@2.7.0':
+    dependencies:
+      '@tauri-apps/api': 2.12.4
 
   '@tauri-apps/plugin-deep-link@2.6.2':
     dependencies:

@@ -20,9 +20,9 @@ import {
 import { Track } from "livekit-client"
 import { useEffect, useRef, useState } from "react"
 
+import { Spinner } from "@/components/spinner"
 import { TooltipContent } from "@/components/tooltip-content"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
 import { UserAvatar } from "@/components/user-avatar"
 import { ChatHeader } from "@/features/layout/chat-header"
@@ -44,6 +44,7 @@ import {
   useVoice,
 } from "@/features/voice/voice-store"
 import { displayName } from "@/lib/format"
+import { useImageColor } from "@/lib/image-color"
 import type { Channel } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -103,6 +104,15 @@ function Tile({
   const isScreen = trackRef.source === Track.Source.ScreenShare
   const name = displayName(profile, member?.nickname)
   const small = height < 140
+  // like Discord, a tile without video takes the profile's colors: the
+  // banner image first, then the banner/accent color, then the avatar
+  const bannerColor = useImageColor(profile?.banner_url)
+  const avatarColor = useImageColor(profile?.avatar_url)
+  const tileColor =
+    bannerColor ??
+    profile?.banner_color ??
+    hexColor(profile?.accent_color) ??
+    avatarColor
   // our own stream isn't played back to us, so it has nothing to adjust
   const streamAudio = isScreen && hasVideo && !participant.isLocal
 
@@ -118,9 +128,7 @@ function Tile({
           onClick={onClick}
           style={{
             // like Discord, a tile without video takes the profile's color
-            backgroundColor: hasVideo
-              ? undefined
-              : (profile?.banner_color ?? hexColor(profile?.accent_color)),
+            backgroundColor: hasVideo ? undefined : tileColor,
           }}
           className={cn(
             "relative flex size-full items-center justify-center overflow-hidden rounded-lg bg-card",
@@ -263,7 +271,7 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
         ))}
       </div>
 
-      {others.length > 0 && fullscreen && (
+      {others.length > 0 && (
         <div className="flex shrink-0 justify-center">
           <button
             type="button"
@@ -280,7 +288,7 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
         </div>
       )}
 
-      {others.length > 0 && !(fullscreen && stripHidden) && (
+      {others.length > 0 && !stripHidden && (
         <div className="flex shrink-0 scrollbar-thin justify-center gap-2 overflow-x-auto">
           {others.map((trackRef) => (
             <Tile

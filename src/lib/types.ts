@@ -17,6 +17,22 @@ export type Profile = {
   custom_status: string | null
   synced_at: string | null
   created_at: string
+  public_flags: number
+  premium_type: number
+  display_name_styles: {
+    font_id: number
+    effect_id: number
+    colors: number[]
+  } | null
+  nameplate_url: string | null
+  connections: DiscordConnection[]
+}
+
+export type DiscordConnection = {
+  type: string
+  id: string
+  name: string
+  verified: boolean
 }
 
 export type Server = {

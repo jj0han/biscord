@@ -1,5 +1,7 @@
 // Pulls the caller's Discord profile (avatar, banner, colors, decoration,
-// server tag) with the OAuth provider token and mirrors it into `profiles`.
+// server tag, badges, name style, nameplate, public connections) with the
+// OAuth provider token and mirrors it into `profiles`. Bio, profile widgets
+// and activity aren't exposed to OAuth apps, so they can't be imported.
 import { corsHeaders, json } from "../_shared/cors.ts"
 import { adminClient, requireUser } from "../_shared/supabase.ts"
 
@@ -20,6 +22,25 @@ type DiscordUser = {
     tag: string | null
     badge: string | null
   } | null
+  public_flags?: number
+  premium_type?: number
+  display_name_styles?: {
+    font_id: number
+    effect_id: number
+    colors: number[]
+  } | null
+  collectibles?: {
+    nameplate?: { asset: string } | null
+  } | null
+}
+
+type DiscordConnection = {
+  type: string
+  id: string
+  name: string
+  verified: boolean
+  revoked?: boolean
+  visibility: number
 }
 
 function assetExt(hash: string) {
@@ -64,6 +85,14 @@ Deno.serve(async (req) => {
     return json({ error: "discord account mismatch" }, 403)
   }
 
+  // needs the "connections" scope; older sessions simply don't have it
+  const connections = await fetch(
+    "https://discord.com/api/v10/users/@me/connections",
+    { headers: { Authorization: `Bearer ${providerToken}` } }
+  )
+    .then((r) => (r.ok ? (r.json() as Promise<DiscordConnection[]>) : null))
+    .catch(() => null)
+
   const tag =
     d.primary_guild?.identity_enabled && d.primary_guild.tag
       ? d.primary_guild
@@ -89,6 +118,17 @@ Deno.serve(async (req) => {
       tag?.badge && tag.identity_guild_id
         ? `${CDN}/guild-tag-badges/${tag.identity_guild_id}/${tag.badge}.png?size=32`
         : null,
+    public_flags: d.public_flags ?? 0,
+    premium_type: d.premium_type ?? 0,
+    display_name_styles: d.display_name_styles ?? null,
+    nameplate_url: d.collectibles?.nameplate?.asset
+      ? `${CDN}/assets/collectibles/${d.collectibles.nameplate.asset}static.png`
+      : null,
+    ...(connections && {
+      connections: connections
+        .filter((c) => c.visibility === 1 && !c.revoked)
+        .map(({ type, id, name, verified }) => ({ type, id, name, verified })),
+    }),
     synced_at: new Date().toISOString(),
   }
 

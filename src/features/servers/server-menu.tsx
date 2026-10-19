@@ -13,6 +13,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 
+import { AppDialogContent } from "@/components/app-dialog"
 import { Button } from "@/components/ui/button"
 import {
   ContextMenuItem,
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/context-menu"
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -77,7 +77,7 @@ function NicknameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <AppDialogContent>
         <form onSubmit={save} className="flex flex-col gap-6">
           <DialogHeader>
             <DialogTitle className="text-header">
@@ -101,7 +101,7 @@ function NicknameDialog({
             <Button type="submit">Salvar</Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }

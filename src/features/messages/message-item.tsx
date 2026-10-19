@@ -49,9 +49,11 @@ import {
   togglePin,
   toggleReaction,
 } from "@/features/messages/queries"
+import { StyledName } from "@/features/profiles/discord-extras"
 import { GuildTag, ProfilePopover } from "@/features/profiles/profile-popover"
 import { useProfile } from "@/features/profiles/queries"
 import { useMember, useMemberColor } from "@/features/servers/queries"
+import { useAccessibility } from "@/features/settings/accessibility"
 import {
   displayName,
   formatFullDate,
@@ -81,7 +83,14 @@ function AuthorName({
         className="font-medium text-header hover:underline"
         style={{ color: roleColor(color) }}
       >
-        {displayName(profile, member?.nickname)}
+        {color ? (
+          displayName(profile, member?.nickname)
+        ) : (
+          <StyledName
+            profile={profile}
+            name={displayName(profile, member?.nickname)}
+          />
+        )}
       </button>
     </ProfilePopover>
   )
@@ -291,6 +300,8 @@ export const MessageItem = memo(function MessageItem({
     else setConfirmDelete(true)
   }
 
+  const compact = useAccessibility().messageDisplay === "compact"
+
   const reply = () => {
     chat.setReplyTo(message)
     chat.focusComposer()
@@ -301,8 +312,8 @@ export const MessageItem = memo(function MessageItem({
       <ContextMenu>
         <ContextMenuTrigger
           className={cn(
-            "group/message relative pr-12 pl-18 transition-colors hover:bg-message-hover",
-            showHead ? "mt-4 py-0.5" : "py-0.5",
+            "group/message relative pr-12 pl-18 text-(length:--chat-font-size) transition-colors hover:bg-message-hover",
+            showHead ? "mt-(--message-group-spacing) py-0.5" : "py-0.5",
             mentioned &&
               "bg-mention before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-warning hover:bg-mention-hover",
             editing && "bg-message-hover"
@@ -311,7 +322,7 @@ export const MessageItem = memo(function MessageItem({
         >
           {message.reply_to_id && <ReplyPreview message={message} />}
 
-          {showHead ? (
+          {showHead && !compact ? (
             <>
               <ProfilePopover
                 userId={message.author_id}
@@ -346,41 +357,59 @@ export const MessageItem = memo(function MessageItem({
               </div>
             </>
           ) : (
-            <time className="absolute top-1 left-0 w-18 pr-2 text-right text-[11px] leading-6 text-muted-foreground opacity-0 group-hover/message:opacity-100">
+            <time
+              className={cn(
+                "absolute top-1 left-0 w-18 pr-2 text-right text-[11px] leading-6 text-muted-foreground",
+                !showHead && "opacity-0 group-hover/message:opacity-100"
+              )}
+            >
               {formatTime(message.created_at)}
             </time>
           )}
 
-          {editing ? (
-            <EditBox message={message} />
-          ) : (
-            message.content &&
-            !mediaOnly && (
-              <div
-                className={cn(
-                  "leading-[1.375rem] break-words whitespace-pre-wrap text-foreground",
-                  message.pending && "opacity-50",
-                  message.failed && "text-danger"
-                )}
-              >
-                <Markdown content={message.content} />
-                {message.edited_at && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <span className="ml-1 text-[10px] text-muted-foreground select-none" />
-                      }
-                    >
-                      (editado)
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-popover text-sm text-header">
-                      {formatFullDate(message.edited_at)}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            )
-          )}
+          <div
+            className={cn(compact && showHead && "flex items-baseline gap-1")}
+          >
+            {compact && showHead && (
+              <span className="flex shrink-0 items-baseline gap-1">
+                <AuthorName
+                  userId={message.author_id}
+                  serverId={chat.serverId}
+                />
+                {author && <GuildTag profile={author} />}
+              </span>
+            )}
+            {editing ? (
+              <EditBox message={message} />
+            ) : (
+              message.content &&
+              !mediaOnly && (
+                <div
+                  className={cn(
+                    "min-w-0 leading-[1.375] break-words whitespace-pre-wrap text-foreground",
+                    message.pending && "opacity-50",
+                    message.failed && "text-danger"
+                  )}
+                >
+                  <Markdown content={message.content} />
+                  {message.edited_at && (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <span className="ml-1 text-[10px] text-muted-foreground select-none" />
+                        }
+                      >
+                        (editado)
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-popover text-sm text-header">
+                        {formatFullDate(message.edited_at)}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              )
+            )}
+          </div>
 
           {message.failed && (
             <span className="text-xs text-danger">

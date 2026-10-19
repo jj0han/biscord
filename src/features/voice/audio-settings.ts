@@ -9,7 +9,10 @@ export type AudioSettings = {
   inputVolume: number
   /** 0–2 (100% = 1) */
   outputVolume: number
+  /** the browser's built-in WebRTC noise suppression */
   noiseSuppression: boolean
+  /** RNNoise in our mic pipeline (Biscord's "Isolamento de voz") */
+  advancedNoiseSuppression: boolean
   echoCancellation: boolean
   autoGainControl: boolean
   /** let the app pick the gate threshold */
@@ -33,7 +36,8 @@ const defaults: AudioSettings = {
   inputProfile: "isolation",
   inputVolume: 1,
   outputVolume: 1,
-  noiseSuppression: true,
+  noiseSuppression: false,
+  advancedNoiseSuppression: true,
   echoCancellation: true,
   autoGainControl: true,
   autoSensitivity: true,
@@ -48,9 +52,13 @@ const defaults: AudioSettings = {
 function load(): AudioSettings {
   try {
     const raw = localStorage.getItem(KEY)
-    return raw
+    const saved = raw
       ? { ...defaults, ...(JSON.parse(raw) as AudioSettings) }
       : defaults
+    // older saves predate RNNoise: the isolation preset now means RNNoise
+    return saved.inputProfile === "isolation"
+      ? { ...saved, noiseSuppression: false, advancedNoiseSuppression: true }
+      : saved
   } catch {
     return defaults
   }
@@ -64,7 +72,10 @@ export function updateAudioSettings(patch: Partial<AudioSettings>) {
     // the presets own the processing toggles; editing one switches to custom
     if (patch.inputProfile === "isolation") {
       Object.assign(next, {
-        noiseSuppression: true,
+        // RNNoise does a much cleaner job than the browser's suppressor;
+        // running both just muffles the voice
+        noiseSuppression: false,
+        advancedNoiseSuppression: true,
         echoCancellation: true,
         autoGainControl: true,
         autoSensitivity: true,
@@ -72,6 +83,7 @@ export function updateAudioSettings(patch: Partial<AudioSettings>) {
     } else if (patch.inputProfile === "studio") {
       Object.assign(next, {
         noiseSuppression: false,
+        advancedNoiseSuppression: false,
         echoCancellation: false,
         autoGainControl: false,
         autoSensitivity: false,
@@ -79,6 +91,7 @@ export function updateAudioSettings(patch: Partial<AudioSettings>) {
       })
     } else if (
       patch.noiseSuppression !== undefined ||
+      patch.advancedNoiseSuppression !== undefined ||
       patch.echoCancellation !== undefined ||
       patch.autoGainControl !== undefined ||
       patch.autoSensitivity !== undefined ||

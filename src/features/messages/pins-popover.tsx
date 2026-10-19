@@ -1,6 +1,7 @@
 import { PushPinIcon } from "@phosphor-icons/react"
 import { useQuery } from "@tanstack/react-query"
 
+import { Spinner } from "@/components/spinner"
 import {
   Empty,
   EmptyDescription,
@@ -12,7 +13,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/components/user-avatar"
 import { Attachments } from "@/features/messages/attachments"
 import { pinsQuery } from "@/features/messages/queries"

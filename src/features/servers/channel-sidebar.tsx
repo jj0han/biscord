@@ -139,7 +139,7 @@ function VoiceUser({
         <ProfilePopover userId={state.user_id} serverId={serverId}>
           <button
             type="button"
-            className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-interactive hover:bg-hover hover:text-interactive-hover"
+            className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-interactive hover:bg-hover hover:text-interactive-hover compact:h-7 spacious:h-9"
           >
             {participant ? (
               <LiveSpeakingAvatar participant={participant} profile={profile} />
@@ -413,7 +413,7 @@ function ChannelRow({
             onClick={open}
             onKeyDown={(e) => e.key === "Enter" && open()}
             className={cn(
-              "flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 font-medium text-channel-icon transition-colors hover:bg-hover hover:text-interactive-hover",
+              "flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 font-medium text-channel-icon transition-colors hover:bg-hover hover:text-interactive-hover compact:h-7 spacious:h-9.5",
               active &&
                 "bg-selected text-header hover:bg-selected hover:text-header",
               unread && !active && "text-header"

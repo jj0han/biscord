@@ -1,0 +1,284 @@
+@import "tailwindcss";
+@import "./typeset.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/noto-sans";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+/* layout constants shared by the shell, the sidebar and the floating user card */
+:root {
+  --rail-width: 4.5rem;
+  --sidebar-width: 15.5rem;
+  --user-area-height: 3.5rem;
+}
+
+/*
+ * Biscord theme — Discord's palette mapped onto shadcn tokens.
+ *   background  = chat surface        sidebar = channel/DM list
+ *   rail        = server rail         panel   = user panel / secondary-alt
+ *   popover     = floating surfaces   card    = embeds, code blocks
+ */
+
+:root,
+.light {
+    --font-geist-mono: "Geist Mono Variable", monospace;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.321 0.009 268.38);
+  --card: oklch(0.964 0.003 264.54);
+  --card-foreground: oklch(0.321 0.009 268.38);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.321 0.009 268.38);
+  --primary: oklch(0.577 0.209 273.85);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.483 0.013 274.69);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.945 0.003 247.86);
+  --muted-foreground: oklch(0.483 0.013 274.69);
+  --accent: oklch(0.909 0.006 264.53);
+  --accent-foreground: oklch(0.123 0.003 285.97);
+  --destructive: oklch(0.588 0.199 24.39);
+  --border: oklch(0.878 0.008 260.73);
+  --input: oklch(0.921 0.005 258.33);
+  --ring: oklch(0.577 0.209 273.85);
+  --chart-1: oklch(0.577 0.209 273.85);
+  --chart-2: oklch(0.637 0.156 151.97);
+  --chart-3: oklch(0.801 0.151 80.55);
+  --chart-4: oklch(0.637 0.215 24.73);
+  --chart-5: oklch(0.701 0.166 242.02);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.964 0.003 264.54);
+  --sidebar-foreground: oklch(0.483 0.013 274.69);
+  --sidebar-primary: oklch(0.577 0.209 273.85);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.909 0.006 264.53);
+  --sidebar-accent-foreground: oklch(0.123 0.003 285.97);
+  --sidebar-border: oklch(0.878 0.008 260.73);
+  --sidebar-ring: oklch(0.577 0.209 273.85);
+
+  /* Discord-specific surfaces */
+  --rail: oklch(0.921 0.005 258.33);
+  --panel: oklch(0.934 0.003 264.54);
+  --composer: oklch(0.945 0.003 247.86);
+  --hover: oklch(0.483 0.013 274.69 / 8%);
+  --selected: oklch(0.483 0.013 274.69 / 16%);
+  --header: oklch(0.123 0.003 285.97);
+  --interactive: oklch(0.483 0.013 274.69);
+  --interactive-hover: oklch(0.321 0.009 268.38);
+  --channel-icon: oklch(0.613 0.016 268.4);
+  --link: oklch(0.542 0.2 257.96);
+  --success: oklch(0.637 0.156 151.97);
+  --warning: oklch(0.801 0.151 80.55);
+  --danger: oklch(0.637 0.215 24.73);
+  --mention: oklch(0.801 0.151 80.55 / 10%);
+  --mention-hover: oklch(0.801 0.151 80.55 / 16%);
+  --mention-pill: oklch(0.577 0.209 273.85 / 15%);
+  --mention-pill-foreground: oklch(0.497 0.176 273.91);
+  --spoiler: oklch(0.878 0.008 260.73);
+  --status-online: oklch(0.637 0.156 151.97);
+  --status-idle: oklch(0.801 0.151 80.55);
+  --status-dnd: oklch(0.637 0.215 24.73);
+  --status-offline: oklch(0.613 0.016 268.4);
+  --scrollbar: oklch(0.878 0.008 260.73);
+  --message-hover: oklch(0 0 0 / 3%);
+}
+
+.dark {
+  --background: oklch(0.22 0.008 285.74);
+  --foreground: oklch(0.907 0.003 264.54);
+  --card: oklch(0.262 0.009 285.74);
+  --card-foreground: oklch(0.907 0.003 264.54);
+  --popover: oklch(0.21 0.006 285.89);
+  --popover-foreground: oklch(0.907 0.003 264.54);
+  --primary: oklch(0.577 0.209 273.85);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.303 0.009 285.86);
+  --secondary-foreground: oklch(0.964 0.003 264.54);
+  --muted: oklch(0.245 0.008 285.83);
+  --muted-foreground: oklch(0.687 0.015 254.64);
+  --accent: oklch(1 0 0 / 8%);
+  --accent-foreground: oklch(0.964 0.003 264.54);
+  --destructive: oklch(0.588 0.199 24.39);
+  --border: oklch(0.287 0.009 285.82);
+  --input: oklch(0.183 0.004 285.99);
+  --ring: oklch(0.577 0.209 273.85);
+  --sidebar: oklch(0.183 0.004 285.99);
+  --sidebar-foreground: oklch(0.687 0.015 254.64);
+  --sidebar-primary: oklch(0.577 0.209 273.85);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent-foreground: oklch(0.964 0.003 264.54);
+  --sidebar-border: oklch(0.287 0.009 285.82);
+  --sidebar-ring: oklch(0.577 0.209 273.85);
+
+  --rail: oklch(0.183 0.004 285.99);
+  --panel: oklch(0.245 0.008 285.83);
+  --composer: oklch(0.254 0.007 285.86);
+  --hover: oklch(1 0 0 / 6%);
+  --selected: oklch(1 0 0 / 10%);
+  --header: oklch(0.964 0.003 264.54);
+  --interactive: oklch(0.787 0.011 256.71);
+  --interactive-hover: oklch(0.964 0.003 264.54);
+  --channel-icon: oklch(0.613 0.016 268.4);
+  --link: oklch(0.701 0.166 242.02);
+  --mention-pill: oklch(0.577 0.209 273.85 / 30%);
+  --mention-pill-foreground: oklch(0.87 0.06 273.85);
+  --spoiler: oklch(0.183 0.004 285.99);
+  --scrollbar: oklch(0.303 0.009 285.86);
+  --message-hover: oklch(1 0 0 / 3%);
+}
+
+/* Discord's "Midnight" (OLED black) — same tokens, darker surfaces */
+.dark.midnight {
+  --background: oklch(0 0 0);
+  --card: oklch(0.179 0.004 285.98);
+  --popover: oklch(0.155 0.002 286.15);
+  --muted: oklch(0.16 0.002 286.16);
+  --border: oklch(0.241 0.008 285.82);
+  --input: oklch(0.16 0.002 286.16);
+  --sidebar: oklch(0 0 0);
+  --sidebar-border: oklch(0.241 0.008 285.82);
+  --rail: oklch(0 0 0);
+  --panel: oklch(0.16 0.002 286.16);
+  --composer: oklch(0.155 0.002 286.15);
+  --spoiler: oklch(0.183 0.004 285.99);
+  --scrollbar: oklch(0.27 0.007 285.9);
+}
+
+@theme inline {
+  /* Discord's own stack falls back from gg sans to Noto Sans */
+  --font-sans:
+    "gg sans", "Noto Sans Variable", "Noto Sans", "Helvetica Neue", Helvetica,
+    Arial, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: "Geist Mono Variable", Consolas, "Andale Mono WT", monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+
+  --color-rail: var(--rail);
+  --color-panel: var(--panel);
+  --color-composer: var(--composer);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-header: var(--header);
+  --color-interactive: var(--interactive);
+  --color-interactive-hover: var(--interactive-hover);
+  --color-channel-icon: var(--channel-icon);
+  --color-link: var(--link);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-mention: var(--mention);
+  --color-mention-hover: var(--mention-hover);
+  --color-mention-pill: var(--mention-pill);
+  --color-mention-pill-foreground: var(--mention-pill-foreground);
+  --color-spoiler: var(--spoiler);
+  --color-status-online: var(--status-online);
+  --color-status-idle: var(--status-idle);
+  --color-status-dnd: var(--status-dnd);
+  --color-status-offline: var(--status-offline);
+  --color-message-hover: var(--message-hover);
+
+  /*
+   * Discord's radii: 4px chips, 6px rows, 8px cards/buttons/popouts, 12px
+   * squircles and dialogs. The vendor primitives use 2xl/3xl, so those cap
+   * at 8px instead of growing into pills.
+   */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.5rem;
+  --radius-4xl: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full overflow-hidden;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* highlight.js tokens for code blocks, tuned to Discord's palette */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal {
+  color: var(--chart-1);
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-tag {
+  color: var(--chart-2);
+}
+.hljs-number,
+.hljs-built_in,
+.hljs-type {
+  color: var(--chart-3);
+}
+.hljs-title,
+.hljs-section,
+.hljs-name {
+  color: var(--chart-5);
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+.hljs-deletion {
+  color: var(--chart-4);
+}

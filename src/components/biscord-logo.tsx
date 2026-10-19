@@ -1,0 +1,11 @@
+/** The Biscord "B" glyph in currentColor, for places Discord shows its logo. */
+export function BiscordLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="16 12 36 42" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M20 16h15c7 0 11 3.6 11 9 0 3.4-1.8 5.9-4.7 7 3.9 1 6.2 3.8 6.2 7.8 0 6-4.6 9.7-12 9.7H20V16Zm8 6.6v7.1h6c2.6 0 4-1.3 4-3.6 0-2.2-1.4-3.5-4-3.5h-6Zm0 13v7.9h6.8c2.9 0 4.6-1.5 4.6-4s-1.7-3.9-4.6-3.9H28Z"
+      />
+    </svg>
+  )
+}

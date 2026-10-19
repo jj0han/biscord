@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js"
 import { useQueryClient } from "@tanstack/react-query"
 import { createContext, use, useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import { isDesktop } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
@@ -28,13 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useDesktopDeepLinks()
+  useOAuthErrors()
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next)
       setLoading(false)
 
-      if (event === "SIGNED_IN" && next?.provider_token) {
+      // linking Discord to a guest comes back as USER_UPDATED
+      if (
+        (event === "SIGNED_IN" || event === "USER_UPDATED") &&
+        next?.provider_token
+      ) {
         // run outside the auth callback to avoid deadlocking supabase-js
         setTimeout(() => {
           syncDiscordProfile(next).then(() =>
@@ -109,11 +115,31 @@ export async function signInWithDiscord(redirectPath = "/channels/@me") {
 async function handleDeepLinks(urls: string[]) {
   for (const raw of urls) {
     if (!raw.startsWith(DESKTOP_REDIRECT)) continue
-    const code = new URL(raw).searchParams.get("code")
+    const url = new URL(raw)
+    const error = url.searchParams.get("error_description")
+    if (error) toast.error(`Não foi possível entrar: ${error}`)
+    const code = url.searchParams.get("code")
     if (code) {
       await supabase.auth.exchangeCodeForSession(code)
     }
   }
+}
+
+/** Surfaces errors Supabase puts in the URL after an OAuth round trip. */
+function useOAuthErrors() {
+  useEffect(() => {
+    const params = new URLSearchParams(
+      window.location.hash.slice(1) || window.location.search
+    )
+    const message = params.get("error_description")
+    if (!message) return
+    toast.error(
+      message.includes("already linked") || message.includes("Identity")
+        ? "Essa conta do Discord já está ligada a outra conta do Biscord."
+        : `Não foi possível entrar: ${message}`
+    )
+    window.history.replaceState(null, "", window.location.pathname)
+  }, [])
 }
 
 function useDesktopDeepLinks() {
@@ -134,4 +160,46 @@ function useDesktopDeepLinks() {
 
 export function signOut() {
   return supabase.auth.signOut()
+}
+
+/** A guest account: real profile and data, no Discord until linked later. */
+export function signInAsGuest(name: string) {
+  return supabase.auth.signInAnonymously({
+    options: { data: { guest_name: name.trim().slice(0, 32) } },
+  })
+}
+
+/** True while the account has no Discord identity linked yet. */
+export function isGuest(session: Session | null) {
+  return !session?.user.identities?.some((i) => i.provider === "discord")
+}
+
+/**
+ * Attaches a Discord account to the current (guest) account. Same flow as the
+ * Discord login: browser + deep link on desktop, redirect on the web; the
+ * profile sync then runs on the SIGNED_IN that follows.
+ */
+export async function linkDiscord(redirectPath = window.location.pathname) {
+  if (!isDesktop) {
+    return supabase.auth.linkIdentity({
+      provider: "discord",
+      options: {
+        scopes: "identify email",
+        redirectTo: `${window.location.origin}${redirectPath}`,
+      },
+    })
+  }
+  const result = await supabase.auth.linkIdentity({
+    provider: "discord",
+    options: {
+      scopes: "identify email",
+      redirectTo: DESKTOP_REDIRECT,
+      skipBrowserRedirect: true,
+    },
+  })
+  if (result.data?.url) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener")
+    await openUrl(result.data.url)
+  }
+  return result
 }

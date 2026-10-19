@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
 const PLAY_FOR_MS = 5000
+const LINGER_MS = 3000
 
 /**
  * A GIF that animates for a few seconds after it appears, then freezes on the
- * current frame and only animates again while hovered — like Discord's chat.
+ * current frame and only animates again on hover, lingering a few seconds
+ * after the pointer leaves — like Discord's chat.
  * Freezing draws the live frame onto a canvas, so it works for any GIF host.
  */
 export function PausableGif({
@@ -23,6 +25,7 @@ export function PausableGif({
   const [loaded, setLoaded] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [frozen, setFrozen] = useState(false)
+  const lingerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const freeze = () => {
     const img = imgRef.current
@@ -41,15 +44,23 @@ export function PausableGif({
     return () => clearTimeout(timer)
   }, [loaded])
 
+  useEffect(() => () => clearTimeout(lingerRef.current), [])
+
   const playing = hovered || !frozen
 
   return (
     <span
       className="relative block size-full"
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        clearTimeout(lingerRef.current)
+        setHovered(true)
+      }}
       onMouseLeave={() => {
-        setHovered(false)
-        freeze()
+        clearTimeout(lingerRef.current)
+        lingerRef.current = setTimeout(() => {
+          setHovered(false)
+          freeze()
+        }, LINGER_MS)
       }}
     >
       <img

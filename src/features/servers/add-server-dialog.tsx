@@ -21,6 +21,7 @@ import { useUserId } from "@/features/auth/auth-provider"
 import { useProfile } from "@/features/profiles/queries"
 import { createServer, uploadFile } from "@/features/servers/queries"
 import { displayName } from "@/lib/format"
+import { publicOrigin } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
 
 type Step = "choose" | "create" | "join"
@@ -206,7 +207,7 @@ function JoinStep({
           id="invite"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={`${window.location.origin}/invite/hTKzmak`}
+          placeholder={`${publicOrigin}/invite/hTKzmak`}
           autoFocus
         />
       </Field>

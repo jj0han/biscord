@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { createInvite, useServer } from "@/features/servers/queries"
+import { publicOrigin } from "@/lib/platform"
 
 const EXPIRY_OPTIONS = [
   { label: "30 minutos", seconds: 1800 },
@@ -60,7 +61,7 @@ function InviteContent({ serverId }: { serverId: string }) {
     }
   }, [serverId, expiry])
 
-  const link = code ? `${window.location.origin}/invite/${code}` : ""
+  const link = code ? `${publicOrigin}/invite/${code}` : ""
 
   const copy = async () => {
     await navigator.clipboard.writeText(link)

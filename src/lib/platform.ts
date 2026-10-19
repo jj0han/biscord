@@ -21,3 +21,12 @@ export function initDesktopLinks() {
     )
   })
 }
+
+/**
+ * Where shareable links (invites) should point. The desktop shell runs on an
+ * internal origin (tauri.localhost) that nobody else can open, so it uses the
+ * public site instead.
+ */
+export const publicOrigin = isDesktop
+  ? "https://biscord-mauve.vercel.app"
+  : window.location.origin

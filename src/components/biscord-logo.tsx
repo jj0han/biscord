@@ -1,10 +1,29 @@
-/** The Biscord "B" glyph in currentColor, for places Discord shows its logo. */
+import { useId } from "react"
+
+/**
+ * The Biscord mark — a chat bubble with a face — in currentColor. The eyes
+ * and smile are cut out with a mask, so it works on any background.
+ */
 export function BiscordLogo({ className }: { className?: string }) {
+  const mask = useId()
   return (
-    <svg viewBox="16 12 36 42" className={className} aria-hidden>
+    <svg viewBox="0 0 220 196" className={className} aria-hidden>
+      <mask id={mask}>
+        <rect width="220" height="196" fill="white" />
+        <ellipse cx="80" cy="82" rx="14" ry="17" fill="black" />
+        <ellipse cx="140" cy="82" rx="14" ry="17" fill="black" />
+        <path
+          d="M88 118 C100 130 120 130 132 118"
+          fill="none"
+          stroke="black"
+          strokeWidth="9"
+          strokeLinecap="round"
+        />
+      </mask>
       <path
         fill="currentColor"
-        d="M20 16h15c7 0 11 3.6 11 9 0 3.4-1.8 5.9-4.7 7 3.9 1 6.2 3.8 6.2 7.8 0 6-4.6 9.7-12 9.7H20V16Zm8 6.6v7.1h6c2.6 0 4-1.3 4-3.6 0-2.2-1.4-3.5-4-3.5h-6Zm0 13v7.9h6.8c2.9 0 4.6-1.5 4.6-4s-1.7-3.9-4.6-3.9H28Z"
+        mask={`url(#${mask})`}
+        d="M56 16 H164 C194 16 210 34 210 62 V112 C210 140 194 158 164 158 H104 L66 188 C60 192 54 188 56 181 L60 158 H56 C26 158 10 140 10 112 V62 C10 34 26 16 56 16 Z"
       />
     </svg>
   )

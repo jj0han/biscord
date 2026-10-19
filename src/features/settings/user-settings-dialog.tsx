@@ -15,8 +15,11 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { UserAvatar } from "@/components/user-avatar"
 import {
+  isGuest,
+  linkDiscord,
   signInWithDiscord,
   signOut,
+  useAuth,
   useUserId,
 } from "@/features/auth/auth-provider"
 import { GuildTag, ProfileBanner } from "@/features/profiles/profile-popover"
@@ -74,6 +77,7 @@ function UserSettings({
   onOpenChange: (open: boolean) => void
 }) {
   const [active, setActive] = useState<SettingsTab | "logout">(initialTab)
+  const guest = isGuest(useAuth().session)
 
   return (
     <SettingsLayout
@@ -112,7 +116,18 @@ function UserSettings({
           label: "Sair",
           icon: <SignOutIcon />,
           destructive: true,
-          onSelect: () => void signOut(),
+          onSelect: () => {
+            // a guest without Discord can't sign back into the same account
+            if (
+              guest &&
+              !window.confirm(
+                "Você está como convidado. Ao sair, não será possível voltar a esta conta. Vincule o Discord antes para manter seus dados. Sair mesmo assim?"
+              )
+            ) {
+              return
+            }
+            void signOut()
+          },
         },
       ]}
     >
@@ -126,6 +141,8 @@ function UserSettings({
 
 function AccountSection() {
   const userId = useUserId()
+  const { session } = useAuth()
+  const guest = isGuest(session)
   const me = useProfile(userId)
   if (!me) return null
 
@@ -168,22 +185,40 @@ function AccountSection() {
           </div>
         </div>
       </div>
-      <div className="flex flex-col gap-2">
-        <SettingsLabel>Perfil do Discord</SettingsLabel>
-        <p className="text-sm text-muted-foreground">
-          Seu nome, avatar, banner, decoração e tag de servidor vêm do Discord.
-          Mudou algo lá? Sincronize de novo.
-          {me.synced_at &&
-            ` Última sincronização: ${formatMemberSince(me.synced_at)}.`}
-        </p>
-        <Button
-          className="w-fit"
-          onClick={() => signInWithDiscord(window.location.pathname)}
-        >
-          <DiscordLogoIcon />
-          Sincronizar com o Discord
-        </Button>
-      </div>
+      {guest ? (
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+          <SettingsLabel>Conta de convidado</SettingsLabel>
+          <p className="text-sm text-muted-foreground">
+            Vincule sua conta do Discord para trazer nome, avatar e banner, e
+            para não perder esta conta se você sair. Servidores, mensagens e
+            amigos continuam os mesmos.
+          </p>
+          <Button className="w-fit" onClick={() => void linkDiscord()}>
+            <DiscordLogoIcon />
+            Vincular conta do Discord
+          </Button>
+          <p className="text-xs text-warning">
+            Enquanto for convidado, sair da conta apaga o acesso a ela.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <SettingsLabel>Perfil do Discord</SettingsLabel>
+          <p className="text-sm text-muted-foreground">
+            Seu nome, avatar, banner, decoração e tag de servidor vêm do
+            Discord. Mudou algo lá? Sincronize de novo.
+            {me.synced_at &&
+              ` Última sincronização: ${formatMemberSince(me.synced_at)}.`}
+          </p>
+          <Button
+            className="w-fit"
+            onClick={() => signInWithDiscord(window.location.pathname)}
+          >
+            <DiscordLogoIcon />
+            Sincronizar com o Discord
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

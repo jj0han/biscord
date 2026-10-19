@@ -1,7 +1,6 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import {
   ChatCircleIcon,
-  DiscordLogoIcon,
   DotsThreeIcon,
   UserPlusIcon,
   XIcon,
@@ -11,6 +10,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 
+import { DiscordIcon } from "@/components/brand-icon"
 import { ServerIcon } from "@/components/server-icon"
 import { Button } from "@/components/ui/button"
 import {
@@ -139,6 +139,26 @@ type ProfileModalProps = {
   onOpenChange: (open: boolean) => void
 }
 
+/**
+ * A custom banner also tints the whole full-profile window, fading into the
+ * popover color like Discord's themed profiles.
+ */
+function ProfileBackdrop({ userId }: { userId: string }) {
+  const profile = useProfile(userId)
+  if (!profile?.banner_url) return null
+  return (
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <img
+        src={profile.banner_url}
+        alt=""
+        className="h-full w-full scale-110 object-cover opacity-35 blur-xl"
+        draggable={false}
+      />
+      <div className="absolute inset-0 bg-linear-to-b from-popover/40 via-popover/80 to-popover" />
+    </div>
+  )
+}
+
 /** Discord's full profile: identity card on the left, tabs on the right. */
 export function ProfileModal({
   userId,
@@ -150,7 +170,8 @@ export function ProfileModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
         <DialogOverlay className="bg-black/70 supports-backdrop-filter:backdrop-blur-none" />
-        <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 flex h-[min(45rem,calc(100vh-4rem))] w-[min(54rem,calc(100vw-4rem))] -translate-x-1/2 -translate-y-1/2 gap-6 overflow-hidden rounded-xl border border-border bg-popover p-6 text-sm text-popover-foreground shadow-2xl outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+        <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 isolate z-50 flex h-[min(45rem,calc(100vh-4rem))] w-[min(54rem,calc(100vw-4rem))] -translate-x-1/2 -translate-y-1/2 gap-6 overflow-hidden rounded-xl border border-border bg-popover p-6 text-sm text-popover-foreground shadow-2xl outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+          <ProfileBackdrop userId={userId} />
           {open && (
             <ProfileModalContent
               userId={userId}
@@ -305,7 +326,7 @@ function ProfileModalContent({
             <div className="flex flex-wrap items-center gap-2">
               {discordSince && (
                 <span className="flex items-center gap-1">
-                  <DiscordLogoIcon className="size-4" />
+                  <DiscordIcon className="size-4" />
                   {formatMemberSince(discordSince)}
                 </span>
               )}

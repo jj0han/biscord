@@ -338,7 +338,7 @@ export const MessageItem = memo(function MessageItem({
                   <UserAvatar profile={author ?? null} size="lg" />
                 </button>
               </ProfilePopover>
-              <div className="flex items-baseline gap-2 leading-snug">
+              <div className="mb-0.5 flex items-baseline gap-2 leading-[1.375]">
                 <AuthorName
                   userId={message.author_id}
                   serverId={chat.serverId}

@@ -167,7 +167,7 @@ export function MemberList({ serverId }: { serverId: string }) {
   }, [members, roles, assignments, presence, server?.owner_id])
 
   return (
-    <aside className="flex w-60 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">
+    <aside className="flex w-66 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">
       <ServerActivity serverId={serverId} />
       {groups.hoisted.map(({ role, rows }) => (
         <Section
@@ -198,7 +198,7 @@ export function RecipientList({ recipients }: { recipients: Profile[] }) {
     owner: false,
   }))
   return (
-    <aside className="flex w-60 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">
+    <aside className="flex w-66 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">
       <Section
         title="Membros"
         rows={rows.filter(

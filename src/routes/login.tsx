@@ -1,10 +1,11 @@
-import { DiscordLogoIcon, QrCodeIcon } from "@phosphor-icons/react"
+import { QrCodeIcon } from "@phosphor-icons/react"
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { toast } from "sonner"
 import { z } from "zod"
 
 import { BiscordLogo } from "@/components/biscord-logo"
+import { DiscordIcon } from "@/components/brand-icon"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -74,7 +75,7 @@ function Login() {
             onClick={login}
             disabled={pending !== null || loading}
           >
-            {pending === "discord" ? <Spinner /> : <DiscordLogoIcon />}
+            {pending === "discord" ? <Spinner /> : <DiscordIcon />}
             Entrar com Discord
           </Button>
           <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">

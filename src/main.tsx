@@ -4,6 +4,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { StrictMode } from "react"
 import ReactDOM from "react-dom/client"
 
+import { initSidebarWidth } from "@/features/layout/sidebar-shell"
 import { initAccessibility } from "@/features/settings/accessibility"
 import { initAppearance } from "@/features/settings/appearance"
 import { initDesktopSettings } from "@/features/settings/system-section"
@@ -15,6 +16,7 @@ import { routeTree } from "./routeTree.gen"
 
 initAppearance()
 initAccessibility()
+initSidebarWidth()
 initDesktopSettings()
 initDesktopLinks()
 initUpdater()

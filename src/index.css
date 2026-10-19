@@ -159,7 +159,7 @@
   --sidebar: oklch(0 0 0);
   --sidebar-border: oklch(0.241 0.008 285.82);
   --rail: oklch(0 0 0);
-  --panel: oklch(0.16 0.002 286.16);
+  --panel: oklch(0 0 0);
   --composer: oklch(0.155 0.002 286.15);
   --spoiler: oklch(0.183 0.004 285.99);
   --scrollbar: oklch(0.27 0.007 285.9);

@@ -1,8 +1,11 @@
 import {
+  CaretRightIcon,
   GearSixIcon,
   HeadphonesIcon,
+  IdentificationCardIcon,
   MicrophoneIcon,
   MicrophoneSlashIcon,
+  PencilSimpleIcon,
 } from "@phosphor-icons/react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
@@ -19,7 +22,7 @@ import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
 import { STATUS_LABEL, StatusDot, UserAvatar } from "@/components/user-avatar"
 import { useUserId } from "@/features/auth/auth-provider"
 import { StyledName } from "@/features/profiles/discord-extras"
-import { ProfileBanner } from "@/features/profiles/profile-popover"
+import { ProfileCard } from "@/features/profiles/profile-popover"
 import { updateMyStatus, useProfile } from "@/features/profiles/queries"
 import { usePresence } from "@/features/realtime/presence"
 import {
@@ -147,6 +150,81 @@ function StatusPicker({ onDone }: { onDone: () => void }) {
   )
 }
 
+const menuRow =
+  "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-medium text-foreground hover:bg-hover hover:text-header"
+
+/**
+ * The menu under your own profile card (Discord's account popout): edit
+ * profile, a status flyout and copy ID.
+ */
+function SelfMenu({
+  onEditProfile,
+  onDone,
+}: {
+  onEditProfile: () => void
+  onDone: () => void
+}) {
+  const userId = useUserId()
+  const me = useProfile(userId)
+  const status = usePresence(userId)
+  const [statusOpen, setStatusOpen] = useState(false)
+  const shown = me?.status === "invisible" ? "offline" : status
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col rounded-lg bg-card p-1">
+        <button type="button" className={menuRow} onClick={onEditProfile}>
+          <PencilSimpleIcon className="size-4.5" />
+          Editar perfil
+        </button>
+        <Separator className="mx-2 my-0.5 w-auto" />
+        <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+          <PopoverTrigger
+            openOnHover
+            delay={100}
+            render={<button type="button" className={menuRow} />}
+          >
+            <StatusDot
+              status={shown}
+              className="size-3 [--status-cutout:var(--card)]"
+            />
+            <span className="flex-1">
+              {me?.status === "invisible" ? "Invisível" : STATUS_LABEL[status]}
+            </span>
+            <CaretRightIcon weight="bold" className="size-3.5" />
+          </PopoverTrigger>
+          <PopoverContent
+            side="right"
+            align="start"
+            sideOffset={16}
+            className="w-75 gap-0 rounded-lg border border-border p-0"
+          >
+            <StatusPicker
+              onDone={() => {
+                setStatusOpen(false)
+                onDone()
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+      <div className="flex flex-col rounded-lg bg-card p-1">
+        <button
+          type="button"
+          className={menuRow}
+          onClick={() => {
+            void navigator.clipboard.writeText(userId)
+            onDone()
+          }}
+        >
+          <IdentificationCardIcon className="size-4.5" />
+          Copiar ID do usuário
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /** Avatar + name + mic/deafen/settings at the bottom of the floating card. */
 export function UserPanel() {
   const userId = useUserId()
@@ -190,10 +268,20 @@ export function UserPanel() {
           side="top"
           align="start"
           sideOffset={12}
-          className="w-75 gap-0 overflow-hidden rounded-lg border border-border p-0"
+          className="w-75 gap-0 overflow-hidden rounded-xl border border-border p-0"
         >
-          {me && <ProfileBanner profile={me} />}
-          <StatusPicker onDone={() => setStatusOpen(false)} />
+          <ProfileCard
+            userId={userId}
+            footer={
+              <SelfMenu
+                onEditProfile={() => {
+                  setStatusOpen(false)
+                  setSettingsTab("account")
+                }}
+                onDone={() => setStatusOpen(false)}
+              />
+            }
+          />
         </PopoverContent>
       </Popover>
 

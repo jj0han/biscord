@@ -1,19 +1,35 @@
 import {
-  FacebookLogoIcon,
-  GithubLogoIcon,
-  InstagramLogoIcon,
+  ArrowUpRightIcon,
+  GameControllerIcon,
   LinkIcon,
-  RedditLogoIcon,
-  SealCheckIcon,
-  SpotifyLogoIcon,
-  SteamLogoIcon,
-  TiktokLogoIcon,
-  TwitchLogoIcon,
-  XLogoIcon,
-  YoutubeLogoIcon,
 } from "@phosphor-icons/react"
-import type { ComponentType } from "react"
+import {
+  siBattledotnet,
+  siBluesky,
+  siBungie,
+  siCrunchyroll,
+  siEbay,
+  siEpicgames,
+  siFacebook,
+  siGithub,
+  siInstagram,
+  siLeagueoflegends,
+  siMastodon,
+  type SimpleIcon,
+  siPaypal,
+  siPlaystation,
+  siReddit,
+  siRiotgames,
+  siRoblox,
+  siSpotify,
+  siSteam,
+  siTiktok,
+  siTwitch,
+  siX,
+  siYoutube,
+} from "simple-icons"
 
+import { BrandIcon } from "@/components/brand-icon"
 import { TooltipContent } from "@/components/tooltip-content"
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAccessibility } from "@/features/settings/accessibility"
@@ -98,11 +114,17 @@ function badgesOf(profile: Profile) {
 }
 
 /** The badge row under the username (only what OAuth exposes: flags + Nitro). */
-export function ProfileBadges({ profile }: { profile: Profile }) {
+export function ProfileBadges({
+  profile,
+  className,
+}: {
+  profile: Profile
+  className?: string
+}) {
   const badges = badgesOf(profile)
   if (badges.length === 0) return null
   return (
-    <div className="flex w-fit flex-wrap items-center gap-0.5 rounded-md border border-border px-1 py-0.5">
+    <div className={cn("flex flex-wrap items-center gap-1", className)}>
       {badges.map((badge) => (
         <Tooltip key={badge.bit}>
           <TooltipTrigger
@@ -110,7 +132,7 @@ export function ProfileBadges({ profile }: { profile: Profile }) {
               <img
                 src={`${BADGE_CDN}/${badge.icon}.png`}
                 alt={badge.label}
-                className="size-5"
+                className="size-5.5"
                 draggable={false}
               />
             }
@@ -159,67 +181,114 @@ export function StyledName({
   )
 }
 
+/** Brand logo colors darker than this read as black on dark surfaces. */
+function isDark(hex: string) {
+  const n = parseInt(hex, 16)
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 60
+}
+
 type Service = {
   label: string
-  icon: ComponentType<{ className?: string }>
+  icon?: SimpleIcon
+  /** used when Simple Icons has no logo for the brand */
+  fallbackColor?: string
   url?: (c: DiscordConnection) => string
 }
 
 const SERVICES: Record<string, Service> = {
   spotify: {
     label: "Spotify",
-    icon: SpotifyLogoIcon,
+    icon: siSpotify,
     url: (c) => `https://open.spotify.com/user/${c.id}`,
   },
   github: {
     label: "GitHub",
-    icon: GithubLogoIcon,
+    icon: siGithub,
     url: (c) => `https://github.com/${c.name}`,
   },
   twitch: {
     label: "Twitch",
-    icon: TwitchLogoIcon,
+    icon: siTwitch,
     url: (c) => `https://www.twitch.tv/${c.name}`,
   },
   youtube: {
     label: "YouTube",
-    icon: YoutubeLogoIcon,
+    icon: siYoutube,
     url: (c) => `https://www.youtube.com/channel/${c.id}`,
   },
   steam: {
     label: "Steam",
-    icon: SteamLogoIcon,
+    icon: siSteam,
     url: (c) => `https://steamcommunity.com/profiles/${c.id}`,
   },
   twitter: {
     label: "X",
-    icon: XLogoIcon,
+    icon: siX,
     url: (c) => `https://x.com/${c.name}`,
   },
   reddit: {
     label: "Reddit",
-    icon: RedditLogoIcon,
+    icon: siReddit,
     url: (c) => `https://www.reddit.com/user/${c.name}`,
   },
   instagram: {
     label: "Instagram",
-    icon: InstagramLogoIcon,
+    icon: siInstagram,
     url: (c) => `https://www.instagram.com/${c.name}`,
   },
   tiktok: {
     label: "TikTok",
-    icon: TiktokLogoIcon,
+    icon: siTiktok,
     url: (c) => `https://www.tiktok.com/@${c.name}`,
   },
-  facebook: { label: "Facebook", icon: FacebookLogoIcon },
+  facebook: { label: "Facebook", icon: siFacebook },
   bluesky: {
     label: "Bluesky",
-    icon: LinkIcon,
+    icon: siBluesky,
     url: (c) => `https://bsky.app/profile/${c.id}`,
   },
+  crunchyroll: { label: "Crunchyroll", icon: siCrunchyroll },
+  playstation: { label: "PlayStation", icon: siPlaystation },
+  battlenet: { label: "Battle.net", icon: siBattledotnet },
+  epicgames: { label: "Epic Games", icon: siEpicgames },
+  riotgames: { label: "Riot Games", icon: siRiotgames },
+  leagueoflegends: { label: "League of Legends", icon: siLeagueoflegends },
+  paypal: { label: "PayPal", icon: siPaypal },
+  ebay: { label: "eBay", icon: siEbay },
+  roblox: { label: "Roblox", icon: siRoblox },
+  bungie: { label: "Bungie.net", icon: siBungie },
+  mastodon: { label: "Mastodon", icon: siMastodon },
+  xbox: { label: "Xbox", fallbackColor: "#107C10" },
 }
 
-/** Public connections imported from Discord (needs the connections scope). */
+function ConnectionIcon({ service }: { service?: Service }) {
+  if (service?.icon) {
+    const hex = service.icon.hex
+    return (
+      <BrandIcon
+        icon={service.icon}
+        // dark brand marks (GitHub, Steam, X…) go white like on Discord
+        color={isDark(hex) ? undefined : `#${hex}`}
+        className="size-6 text-header"
+      />
+    )
+  }
+  return (
+    <span
+      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-white"
+      style={{ backgroundColor: service?.fallbackColor }}
+    >
+      {service ? (
+        <GameControllerIcon className="size-4" />
+      ) : (
+        <LinkIcon className="size-4" />
+      )}
+    </span>
+  )
+}
+
+/** Public connections imported from Discord, listed like Discord's profile. */
 export function ProfileConnections({ profile }: { profile: Profile }) {
   const connections = profile.connections ?? []
   if (connections.length === 0) return null
@@ -227,38 +296,38 @@ export function ProfileConnections({ profile }: { profile: Profile }) {
     <div className="flex flex-col gap-1">
       {connections.map((connection) => {
         const service = SERVICES[connection.type]
-        const Icon = service?.icon ?? LinkIcon
         const href = service?.url?.(connection)
+        const key = `${connection.type}:${connection.id}`
         const content = (
           <>
-            <Icon className="size-6 shrink-0" />
-            <span className="flex min-w-0 flex-col">
-              <span className="flex items-center gap-1 truncate font-medium text-header">
-                {connection.name}
-                {connection.verified && (
-                  <SealCheckIcon className="size-4 shrink-0 text-primary" />
-                )}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {service?.label ?? connection.type}
-              </span>
+            <ConnectionIcon service={service} />
+            <span className="truncate font-medium text-header">
+              {connection.name}
             </span>
+            {href && (
+              <ArrowUpRightIcon
+                weight="bold"
+                className="size-3.5 shrink-0 text-interactive"
+              />
+            )}
           </>
         )
         return href ? (
           <a
-            key={`${connection.type}:${connection.id}`}
+            key={key}
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-3 rounded-md border border-border bg-background p-2 hover:bg-hover"
+            title={service?.label}
+            className="flex items-center gap-2 py-1 hover:underline"
           >
             {content}
           </a>
         ) : (
           <div
-            key={`${connection.type}:${connection.id}`}
-            className="flex items-center gap-3 rounded-md border border-border bg-background p-2"
+            key={key}
+            title={service?.label ?? connection.type}
+            className="flex items-center gap-2 py-1"
           >
             {content}
           </div>

@@ -208,7 +208,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
 
     if (!chat.canSend) {
       return (
-        <div className="px-4">
+        <div className="px-2">
           <div className="flex min-h-14 items-center rounded-lg border border-border bg-composer px-4 text-muted-foreground">
             Você não tem permissão para enviar mensagens neste canal.
           </div>
@@ -217,7 +217,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
     }
 
     return (
-      <div className="flex flex-col px-4">
+      <div className="flex flex-col px-2">
         {chat.replyTo && (
           <div className="flex items-center gap-2 rounded-t-lg bg-sidebar px-4 py-2 text-sm text-muted-foreground">
             <span className="flex-1 truncate">

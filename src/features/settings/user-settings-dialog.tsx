@@ -1,7 +1,6 @@
 import {
   BellIcon,
   DesktopIcon,
-  DiscordLogoIcon,
   MicrophoneIcon,
   PaintBrushIcon,
   PencilSimpleIcon,
@@ -11,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 import { useState } from "react"
 
+import { DiscordIcon } from "@/components/brand-icon"
 import { SettingsLabel, SettingsLayout } from "@/components/settings-layout"
 import { useTheme } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
@@ -223,7 +223,7 @@ function AccountSection() {
             amigos continuam os mesmos.
           </p>
           <Button className="w-fit" onClick={() => void linkDiscord()}>
-            <DiscordLogoIcon />
+            <DiscordIcon />
             Vincular conta do Discord
           </Button>
           <p className="text-xs text-warning">
@@ -243,7 +243,7 @@ function AccountSection() {
             className="w-fit"
             onClick={() => signInWithDiscord(window.location.pathname)}
           >
-            <DiscordLogoIcon />
+            <DiscordIcon />
             Sincronizar com o Discord
           </Button>
         </div>

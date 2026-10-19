@@ -1,13 +1,14 @@
 import {
   isTrackReference,
   type TrackReferenceOrPlaceholder,
-  useIsSpeaking,
   useTracks,
   VideoTrack,
 } from "@livekit/components-react"
 import {
   ArrowsInIcon,
   ArrowsOutIcon,
+  CaretDownIcon,
+  CaretUpIcon,
   MicrophoneIcon,
   MicrophoneSlashIcon,
   MonitorArrowUpIcon,
@@ -30,6 +31,9 @@ import { useMember } from "@/features/servers/queries"
 import { UserSettingsDialog } from "@/features/settings/user-settings-dialog"
 import { DeviceMenu } from "@/features/voice/device-menu"
 import { ScreenSharePopover } from "@/features/voice/screen-share"
+import { useSpeaking } from "@/features/voice/speaking"
+import { useStageOpen } from "@/features/voice/stream-pip"
+import { StreamVolumeControl } from "@/features/voice/stream-volume"
 import { UserVoiceMenu } from "@/features/voice/user-voice-menu"
 import { useMediaToggles } from "@/features/voice/voice-connected-panel"
 import {
@@ -94,51 +98,63 @@ function Tile({
   const participant = trackRef.participant
   const profile = useProfile(participant.identity)
   const member = useMember(serverId, participant.identity)
-  const speaking = useIsSpeaking(participant)
+  const speaking = useSpeaking(participant.identity)
   const hasVideo = isTrackReference(trackRef) && !trackRef.publication.isMuted
   const isScreen = trackRef.source === Track.Source.ScreenShare
   const name = displayName(profile, member?.nickname)
   const small = height < 140
+  // our own stream isn't played back to us, so it has nothing to adjust
+  const streamAudio = isScreen && hasVideo && !participant.isLocal
 
   return (
-    <UserVoiceMenu userId={participant.identity} serverId={serverId}>
-      <button
-        type="button"
-        onClick={onClick}
-        style={{
-          width,
-          height,
-          // like Discord, a tile without video takes the profile's color
-          backgroundColor: hasVideo
-            ? undefined
-            : (profile?.banner_color ?? hexColor(profile?.accent_color)),
-        }}
-        className={cn(
-          "relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card",
-          hasVideo && "bg-black",
-          speaking && !isScreen && "ring-2 ring-success ring-inset"
-        )}
+    <div className="group relative shrink-0" style={{ width, height }}>
+      <UserVoiceMenu
+        userId={participant.identity}
+        serverId={serverId}
+        stream={isScreen}
       >
-        {hasVideo ? (
-          <VideoTrack
-            trackRef={trackRef}
-            className={cn(
-              "size-full",
-              isScreen ? "object-contain" : "object-cover"
-            )}
-          />
-        ) : (
-          <UserAvatar profile={profile ?? null} size={small ? "lg" : "xl"} />
-        )}
-        <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-sm font-medium text-white">
-          {isScreen && <MonitorArrowUpIcon className="size-4 shrink-0" />}
-          <span className="truncate">{name}</span>
-          {!isScreen && !participant.isMicrophoneEnabled && (
-            <MicrophoneSlashIcon className="size-4 shrink-0 text-danger" />
+        <button
+          type="button"
+          onClick={onClick}
+          style={{
+            // like Discord, a tile without video takes the profile's color
+            backgroundColor: hasVideo
+              ? undefined
+              : (profile?.banner_color ?? hexColor(profile?.accent_color)),
+          }}
+          className={cn(
+            "relative flex size-full items-center justify-center overflow-hidden rounded-lg bg-card",
+            hasVideo && "bg-black",
+            speaking && !isScreen && "ring-2 ring-success ring-inset"
           )}
-        </span>
-      </button>
-    </UserVoiceMenu>
+        >
+          {hasVideo ? (
+            <VideoTrack
+              trackRef={trackRef}
+              className={cn(
+                "size-full",
+                isScreen ? "object-contain" : "object-cover"
+              )}
+            />
+          ) : (
+            <UserAvatar profile={profile ?? null} size={small ? "lg" : "xl"} />
+          )}
+          <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-sm font-medium text-white">
+            {isScreen && <MonitorArrowUpIcon className="size-4 shrink-0" />}
+            <span className="truncate">{name}</span>
+            {!isScreen && !participant.isMicrophoneEnabled && (
+              <MicrophoneSlashIcon className="size-4 shrink-0 text-danger" />
+            )}
+          </span>
+        </button>
+      </UserVoiceMenu>
+      {streamAudio && !small && (
+        <StreamVolumeControl
+          userId={participant.identity}
+          className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+        />
+      )}
+    </div>
   )
 }
 
@@ -193,6 +209,8 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
     useMediaToggles()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
+  const [stripHidden, setStripHidden] = useState(false)
+  useStageOpen()
   const tracks = useTracks(
     [
       { source: Track.Source.Camera, withPlaceholder: true },
@@ -245,7 +263,24 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
         ))}
       </div>
 
-      {others.length > 0 && (
+      {others.length > 0 && fullscreen && (
+        <div className="flex shrink-0 justify-center">
+          <button
+            type="button"
+            onClick={() => setStripHidden((hidden) => !hidden)}
+            className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium text-interactive hover:bg-hover hover:text-interactive-hover"
+          >
+            {stripHidden ? (
+              <CaretUpIcon weight="bold" className="size-3" />
+            ) : (
+              <CaretDownIcon weight="bold" className="size-3" />
+            )}
+            {stripHidden ? "Mostrar participantes" : "Ocultar participantes"}
+          </button>
+        </div>
+      )}
+
+      {others.length > 0 && !(fullscreen && stripHidden) && (
         <div className="flex shrink-0 scrollbar-thin justify-center gap-2 overflow-x-auto">
           {others.map((trackRef) => (
             <Tile

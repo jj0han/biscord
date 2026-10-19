@@ -8,6 +8,7 @@ import {
 } from "@livekit/components-react"
 import { useQuery } from "@tanstack/react-query"
 import {
+  AudioPresets,
   ConnectionState,
   DisconnectReason,
   type LocalAudioTrack,
@@ -28,6 +29,8 @@ import {
 } from "@/features/voice/audio-settings"
 import { audioDevice } from "@/features/voice/devices"
 import { MicProcessor } from "@/features/voice/mic-processor"
+import { useSpeakingMonitor } from "@/features/voice/speaking"
+import { StreamPip } from "@/features/voice/stream-pip"
 import {
   DM_SCOPE,
   leaveVoice,
@@ -175,20 +178,73 @@ function useOutputVolumes(connected: boolean, audio: AudioSettings) {
   useEffect(() => {
     if (!connected) return
     for (const participant of participants) {
-      const muted = audio.localMutes.includes(participant.identity)
-      const volume = muted
-        ? 0
-        : audio.outputVolume * (audio.userVolumes[participant.identity] ?? 1)
-      participant.setVolume(volume, Track.Source.Microphone)
-      participant.setVolume(volume, Track.Source.ScreenShareAudio)
+      const id = participant.identity
+      const muted = audio.localMutes.includes(id)
+      // their voice and their stream have independent volumes, like Discord
+      participant.setVolume(
+        muted ? 0 : audio.outputVolume * (audio.userVolumes[id] ?? 1),
+        Track.Source.Microphone
+      )
+      participant.setVolume(
+        audio.outputVolume * (audio.streamVolumes[id] ?? 1),
+        Track.Source.ScreenShareAudio
+      )
     }
   }, [
     connected,
     participants,
     audio.outputVolume,
     audio.userVolumes,
+    audio.streamVolumes,
     audio.localMutes,
   ])
+}
+
+/**
+ * Keeps the devices picked in settings. When a headset drops out the browser
+ * falls back to another device; once it shows up again (or the system default
+ * changes while we follow "default") we switch back, also after a reconnect.
+ */
+function useDeviceRecovery(connected: boolean) {
+  const room = useRoomContext()
+  useEffect(() => {
+    if (!connected) return
+    const kinds = ["audioinput", "audiooutput"] as const
+    const defaultGroup: Partial<Record<MediaDeviceKind, string>> = {}
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const sync = async (initial = false) => {
+      const devices = await navigator.mediaDevices
+        .enumerateDevices()
+        .catch(() => [])
+      for (const kind of kinds) {
+        const wanted = audioDevice(kind)
+        const ofKind = devices.filter((d) => d.kind === kind)
+        if (!ofKind.some((d) => d.deviceId === wanted)) continue
+        const group = ofKind.find((d) => d.deviceId === "default")?.groupId
+        const defaultMoved =
+          wanted === "default" && group !== defaultGroup[kind]
+        defaultGroup[kind] = group
+        if (initial) continue
+        if (room.getActiveDevice(kind) !== wanted || defaultMoved) {
+          await room.switchActiveDevice(kind, wanted).catch(() => undefined)
+        }
+      }
+    }
+    const schedule = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => void sync(), 500)
+    }
+
+    void sync(true)
+    navigator.mediaDevices.addEventListener("devicechange", schedule)
+    room.on(RoomEvent.Reconnected, schedule)
+    return () => {
+      clearTimeout(timer)
+      navigator.mediaDevices.removeEventListener("devicechange", schedule)
+      room.off(RoomEvent.Reconnected, schedule)
+    }
+  }, [room, connected])
 }
 
 /** Lives inside LiveKitRoom: applies mute state and publishes voice presence. */
@@ -209,6 +265,8 @@ function VoiceBridge() {
   useCallSounds(connected)
   useMicPipeline(connected, audio)
   useOutputVolumes(connected, audio)
+  useDeviceRecovery(connected)
+  useSpeakingMonitor(connected)
 
   useEffect(() => {
     if (connected) playSound("join")
@@ -290,6 +348,12 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       video={connection?.video ?? false}
       options={{
         adaptiveStream: true,
+        // Opus at 64 kbps instead of LiveKit's 48 kbps default; RED keeps
+        // voices clean on lossy connections
+        publishDefaults: {
+          audioPreset: AudioPresets.musicHighQuality,
+          red: true,
+        },
         dynacast: true,
         // lets per-user and output volume go above 100%
         webAudioMix: true,
@@ -327,6 +391,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     >
       <VoiceBridge />
       {children}
+      <StreamPip />
     </LiveKitRoom>
   )
 }

@@ -1,6 +1,6 @@
 [package]
 name = "biscord"
-version = "0.1.2"
+version = "0.1.3"
 description = "Biscord desktop"
 authors = ["jj0han"]
 license = ""
@@ -26,5 +26,7 @@ tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"

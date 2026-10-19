@@ -6,12 +6,14 @@ import ReactDOM from "react-dom/client"
 
 import { initAppearance } from "@/features/settings/appearance"
 import { initDesktopLinks } from "@/lib/platform"
+import { initUpdater } from "@/lib/updater"
 import Providers, { queryClient } from "@/providers.tsx"
 
 import { routeTree } from "./routeTree.gen"
 
 initAppearance()
 initDesktopLinks()
+initUpdater()
 
 const router = createRouter({
   routeTree,

@@ -105,6 +105,7 @@ function MutualServers({ userId }: { userId: string }) {
     <div className="flex flex-col gap-1">
       {mutual.map((server) => (
         <DialogClose
+          nativeButton={false}
           key={server.id}
           render={
             <Link

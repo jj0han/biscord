@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Biscord",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "identifier": "app.biscord.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -45,7 +45,8 @@
         "installMode": "currentUser"
       }
     },
-    "shortDescription": "Chat, voz e vídeo com seus amigos"
+    "shortDescription": "Chat, voz e vídeo com seus amigos",
+    "createUpdaterArtifacts": true
   },
   "plugins": {
     "deep-link": {
@@ -53,6 +54,15 @@
         "schemes": [
           "biscord"
         ]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0RUE5Mjk4MDE5MkI4QzQKUldURXVKSUJtSkxxcERRN3lUcU1Kc0Z1R05RM1N0UHo5ODJ3Qk85Y0gyRnNrSTNNR0NlYkxSc20K",
+      "endpoints": [
+        "https://github.com/jj0han/biscord/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

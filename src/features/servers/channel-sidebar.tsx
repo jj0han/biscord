@@ -1,4 +1,4 @@
-import { useIsSpeaking, useParticipants } from "@livekit/components-react"
+import { useParticipants } from "@livekit/components-react"
 import {
   CaretDownIcon,
   CaretUpIcon,
@@ -45,6 +45,7 @@ import {
   useServer,
 } from "@/features/servers/queries"
 import { ServerMenuItems, useServerMenu } from "@/features/servers/server-menu"
+import { useSpeaking } from "@/features/voice/speaking"
 import { UserVoiceMenu } from "@/features/voice/user-voice-menu"
 import {
   joinVoice,
@@ -117,7 +118,7 @@ function LiveSpeakingAvatar({
   participant: Participant
   profile: ReturnType<typeof useProfile>
 }) {
-  const speaking = useIsSpeaking(participant)
+  const speaking = useSpeaking(participant.identity)
   return <UserAvatar profile={profile ?? null} size="sm" speaking={speaking} />
 }
 

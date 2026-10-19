@@ -1,6 +1,6 @@
 import { useLocalParticipant } from "@livekit/components-react"
 import { MonitorArrowUpIcon } from "@phosphor-icons/react"
-import type { AudioCaptureOptions } from "livekit-client"
+import { type AudioCaptureOptions, AudioPresets } from "livekit-client"
 import { type ReactElement, useState } from "react"
 import { toast } from "sonner"
 
@@ -128,6 +128,8 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
                 echoCancellation: false,
                 noiseSuppression: false,
                 autoGainControl: false,
+                channelCount: 2,
+                sampleRate: 48000,
                 // keep Biscord's own playback (everyone's voices) out of the
                 // capture, otherwise the call hears itself twice
                 restrictOwnAudio: true,
@@ -153,6 +155,12 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
           },
           // the stream should be as sharp as possible for viewers
           screenShareSimulcastLayers: [],
+          // stereo Opus at 128 kbps without DTX/RED: music and games keep
+          // their full range instead of sounding like a phone call
+          audioPreset: AudioPresets.musicHighQualityStereo,
+          forceStereo: true,
+          dtx: false,
+          red: false,
         }
       )
       playSound("streamStart")

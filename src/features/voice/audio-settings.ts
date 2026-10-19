@@ -21,6 +21,8 @@ export type AudioSettings = {
   pushToTalkKey: string
   /** userId -> 0–2 */
   userVolumes: Record<string, number>
+  /** userId -> 0–2, the volume of their screen share audio */
+  streamVolumes: Record<string, number>
   /** userIds muted locally ("Silenciar" in the user menu) */
   localMutes: string[]
 }
@@ -39,6 +41,7 @@ const defaults: AudioSettings = {
   pushToTalk: false,
   pushToTalkKey: "KeyV",
   userVolumes: {},
+  streamVolumes: {},
   localMutes: [],
 }
 
@@ -95,6 +98,15 @@ export function updateAudioSettings(patch: Partial<AudioSettings>) {
 export function setUserVolume(userId: string, volume: number) {
   updateAudioSettings({
     userVolumes: { ...audioSettingsStore.get().userVolumes, [userId]: volume },
+  })
+}
+
+export function setStreamVolume(userId: string, volume: number) {
+  updateAudioSettings({
+    streamVolumes: {
+      ...audioSettingsStore.get().streamVolumes,
+      [userId]: volume,
+    },
   })
 }
 

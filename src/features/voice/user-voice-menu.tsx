@@ -15,6 +15,7 @@ import { openDm } from "@/features/dms/queries"
 import { ProfileModal } from "@/features/profiles/profile-modal"
 import { VolumeSlider } from "@/features/voice/audio-controls"
 import {
+  setStreamVolume,
   setUserVolume,
   toggleLocalMute,
   useAudioSettings,
@@ -27,10 +28,13 @@ import {
 export function UserVoiceMenu({
   userId,
   serverId,
+  stream = false,
   children,
 }: {
   userId: string
   serverId: string | null
+  /** opened on their stream: the slider controls the stream, not the voice */
+  stream?: boolean
   children: ReactElement
 }) {
   const me = useUserId()
@@ -58,13 +62,21 @@ export function UserVoiceMenu({
               <ContextMenuSeparator />
               <div className="flex flex-col gap-2 px-2 py-1.5">
                 <span className="text-sm font-medium text-header">
-                  Volume do usuário
+                  {stream ? "Volume da transmissão" : "Volume do usuário"}
                 </span>
-                <VolumeSlider
-                  label="Volume do usuário"
-                  value={audio.userVolumes[userId] ?? 1}
-                  onChange={(volume) => setUserVolume(userId, volume)}
-                />
+                {stream ? (
+                  <VolumeSlider
+                    label="Volume da transmissão"
+                    value={audio.streamVolumes[userId] ?? 1}
+                    onChange={(volume) => setStreamVolume(userId, volume)}
+                  />
+                ) : (
+                  <VolumeSlider
+                    label="Volume do usuário"
+                    value={audio.userVolumes[userId] ?? 1}
+                    onChange={(volume) => setUserVolume(userId, volume)}
+                  />
+                )}
               </div>
               <ContextMenuSeparator />
               <ContextMenuCheckboxItem

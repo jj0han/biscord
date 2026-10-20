@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { createContext, use, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
+import { takeSyncOverwrite } from "@/features/profiles/queries"
 import { openPath, pathFromDeepLink } from "@/lib/deep-link-navigation"
 import { isDesktop } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
@@ -20,7 +21,11 @@ const AuthContext = createContext<AuthState | undefined>(undefined)
 async function syncDiscordProfile(session: Session) {
   if (!session.provider_token) return
   await supabase.functions.invoke("sync-discord-profile", {
-    body: { providerToken: session.provider_token },
+    body: {
+      providerToken: session.provider_token,
+      // customized fields the user chose to replace (see the resync dialog)
+      overwrite: takeSyncOverwrite(),
+    },
   })
 }
 

@@ -1,6 +1,7 @@
 import {
   BellIcon,
   DesktopIcon,
+  IdentificationBadgeIcon,
   MicrophoneIcon,
   PaintBrushIcon,
   PencilSimpleIcon,
@@ -19,7 +20,6 @@ import { UserAvatar } from "@/components/user-avatar"
 import {
   isGuest,
   linkDiscord,
-  signInWithDiscord,
   signOut,
   useAuth,
   useUserId,
@@ -29,6 +29,8 @@ import { useProfile } from "@/features/profiles/queries"
 import { requestNotificationPermission } from "@/features/realtime/notifications"
 import { AccessibilitySection } from "@/features/settings/accessibility-section"
 import { setMidnight, useMidnight } from "@/features/settings/appearance"
+import { DiscordResyncButton } from "@/features/settings/discord-resync"
+import { ProfileSection } from "@/features/settings/profile-section"
 import { SystemSection } from "@/features/settings/system-section"
 import { VoiceSection } from "@/features/settings/voice-section"
 import { displayName, formatMemberSince } from "@/lib/format"
@@ -38,6 +40,7 @@ import { cn } from "@/lib/utils"
 
 export type SettingsTab =
   | "account"
+  | "profile"
   | "appearance"
   | "accessibility"
   | "voice"
@@ -105,6 +108,12 @@ function UserSettings({
           group: "Configurações de usuário",
         },
         {
+          key: "profile",
+          label: "Perfis",
+          icon: <IdentificationBadgeIcon />,
+          group: "Configurações de usuário",
+        },
+        {
           key: "appearance",
           label: "Aparência",
           icon: <PaintBrushIcon />,
@@ -159,6 +168,7 @@ function UserSettings({
       ]}
     >
       {active === "account" && <AccountSection />}
+      {active === "profile" && <ProfileSection />}
       {active === "appearance" && <AppearanceSection />}
       {active === "accessibility" && <AccessibilitySection />}
       {active === "voice" && <VoiceSection />}
@@ -235,17 +245,13 @@ function AccountSection() {
           <SettingsLabel>Perfil do Discord</SettingsLabel>
           <p className="text-sm text-muted-foreground">
             Seu nome, avatar, banner, decoração e tag de servidor vêm do
-            Discord. Mudou algo lá? Sincronize de novo.
+            Discord, e você pode personalizá-los em Perfis. Mudou algo lá?
+            Sincronize de novo — o que você personalizou fica como está, a menos
+            que escolha substituir.
             {me.synced_at &&
               ` Última sincronização: ${formatMemberSince(me.synced_at)}.`}
           </p>
-          <Button
-            className="w-fit"
-            onClick={() => signInWithDiscord(window.location.pathname)}
-          >
-            <DiscordIcon />
-            Sincronizar com o Discord
-          </Button>
+          <DiscordResyncButton profile={me} />
         </div>
       )}
     </div>

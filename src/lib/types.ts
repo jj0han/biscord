@@ -26,6 +26,9 @@ export type Profile = {
   } | null
   nameplate_url: string | null
   connections: DiscordConnection[]
+  bio: string | null
+  /** synced fields the user customized; a Discord sync leaves them alone */
+  overrides: string[]
 }
 
 export type DiscordConnection = {

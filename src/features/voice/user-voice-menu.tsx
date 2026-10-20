@@ -13,6 +13,7 @@ import {
 import { useUserId } from "@/features/auth/auth-provider"
 import { openDm } from "@/features/dms/queries"
 import { ProfileModal } from "@/features/profiles/profile-modal"
+import { useMemberModeration } from "@/features/servers/member-moderation"
 import { VolumeSlider } from "@/features/voice/audio-controls"
 import {
   setStreamVolume,
@@ -45,6 +46,7 @@ export function UserVoiceMenu({
   const audio = useAudioSettings()
   const [profileOpen, setProfileOpen] = useState(false)
   const isMe = userId === me
+  const moderation = useMemberModeration(serverId, userId)
 
   const message = async () => {
     const channelId = await openDm(userId)
@@ -92,6 +94,7 @@ export function UserVoiceMenu({
               </ContextMenuCheckboxItem>
             </>
           )}
+          {moderation.items}
           <ContextMenuSeparator />
           <ContextMenuItem
             onClick={() => navigator.clipboard.writeText(userId)}
@@ -100,6 +103,7 @@ export function UserVoiceMenu({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      {moderation.dialogs}
       <ProfileModal
         userId={userId}
         serverId={serverId}

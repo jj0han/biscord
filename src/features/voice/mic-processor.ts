@@ -1,10 +1,6 @@
-import {
-  loadRnnoise,
-  RnnoiseWorkletNode,
-} from "@sapphi-red/web-noise-suppressor"
-import rnnoiseWasmUrl from "@sapphi-red/web-noise-suppressor/rnnoise.wasm?url"
-import rnnoiseSimdWasmUrl from "@sapphi-red/web-noise-suppressor/rnnoise_simd.wasm?url"
-import rnnoiseWorkletUrl from "@sapphi-red/web-noise-suppressor/rnnoiseWorklet.js?url"
+import { GtcrnWorkletNode, loadGtcrn } from "@sapphi-red/web-noise-suppressor"
+import gtcrnWasmUrl from "@sapphi-red/web-noise-suppressor/gtcrn.wasm?url"
+import gtcrnWorkletUrl from "@sapphi-red/web-noise-suppressor/gtcrnWorklet.js?url"
 import type {
   AudioProcessorOptions,
   Track,
@@ -23,27 +19,25 @@ export function rmsToDb(data: Float32Array) {
   return rms > 0 ? Math.max(-100, 20 * Math.log10(rms)) : -100
 }
 
-let rnnoiseBinary: Promise<ArrayBuffer> | undefined
-const rnnoiseContexts = new WeakSet<BaseAudioContext>()
+let denoiserBinary: Promise<ArrayBuffer> | undefined
+const denoiserContexts = new WeakSet<BaseAudioContext>()
 
 /**
- * RNNoise (a small neural network that strips keyboard, fan and background
- * noise from speech) as a Web Audio node. It only runs at 48 kHz; returns
- * undefined when unavailable so the mic keeps working without it.
+ * Voice isolation: GTCRN, a small speech-enhancement network that strips
+ * keyboard, fan and background noise and leaves the voice. (RNNoise was
+ * tried first and barely touched steady noise.) Returns undefined when it
+ * can't run, so the mic keeps working without it.
  */
-export async function createRnnoise(context: AudioContext) {
+export async function createDenoiser(context: AudioContext) {
   if (context.sampleRate !== 48000) return undefined
   try {
-    rnnoiseBinary ??= loadRnnoise({
-      url: rnnoiseWasmUrl,
-      simdUrl: rnnoiseSimdWasmUrl,
-    })
-    const wasmBinary = await rnnoiseBinary
-    if (!rnnoiseContexts.has(context)) {
-      await context.audioWorklet.addModule(rnnoiseWorkletUrl)
-      rnnoiseContexts.add(context)
+    denoiserBinary ??= loadGtcrn({ url: gtcrnWasmUrl })
+    const wasmBinary = await denoiserBinary
+    if (!denoiserContexts.has(context)) {
+      await context.audioWorklet.addModule(gtcrnWorkletUrl)
+      denoiserContexts.add(context)
     }
-    return new RnnoiseWorkletNode(context, { wasmBinary, maxChannels: 1 })
+    return new GtcrnWorkletNode(context, { wasmBinary, maxChannels: 1 })
   } catch {
     return undefined
   }
@@ -61,7 +55,7 @@ export class MicProcessor implements TrackProcessor<
   processedTrack?: MediaStreamTrack
 
   private source?: MediaStreamAudioSourceNode
-  private rnnoise?: RnnoiseWorkletNode
+  private denoiser?: GtcrnWorkletNode
   private volume?: GainNode
   private gate?: GainNode
   private analyser?: AnalyserNode
@@ -87,10 +81,12 @@ export class MicProcessor implements TrackProcessor<
     this.analyser.fftSize = 1024
     const destination = audioContext.createMediaStreamDestination()
 
-    this.rnnoise = this.denoise ? await createRnnoise(audioContext) : undefined
-    if (this.rnnoise) {
-      this.source.connect(this.rnnoise)
-      this.rnnoise.connect(this.volume)
+    this.denoiser = this.denoise
+      ? await createDenoiser(audioContext)
+      : undefined
+    if (this.denoiser) {
+      this.source.connect(this.denoiser)
+      this.denoiser.connect(this.volume)
     } else {
       this.source.connect(this.volume)
     }
@@ -123,9 +119,9 @@ export class MicProcessor implements TrackProcessor<
   async destroy() {
     clearInterval(this.timer)
     this.source?.disconnect()
-    this.rnnoise?.disconnect()
-    this.rnnoise?.destroy()
-    this.rnnoise = undefined
+    this.denoiser?.disconnect()
+    this.denoiser?.destroy()
+    this.denoiser = undefined
     this.volume?.disconnect()
     this.gate?.disconnect()
     this.analyser?.disconnect()

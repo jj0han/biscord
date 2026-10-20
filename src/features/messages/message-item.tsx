@@ -312,7 +312,7 @@ export const MessageItem = memo(function MessageItem({
       <ContextMenu>
         <ContextMenuTrigger
           className={cn(
-            "group/message relative pr-12 pl-18 text-(length:--chat-font-size) transition-colors hover:bg-message-hover",
+            "group/message group/play relative pr-12 pl-18 text-(length:--chat-font-size) transition-colors hover:bg-message-hover max-md:pr-3",
             showHead ? "mt-(--message-group-spacing) py-0.5" : "py-0.5",
             mentioned &&
               "bg-mention before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-warning hover:bg-mention-hover",
@@ -335,7 +335,7 @@ export const MessageItem = memo(function MessageItem({
                     message.reply_to_id ? "top-7" : "top-1"
                   )}
                 >
-                  <UserAvatar profile={author ?? null} size="lg" />
+                  <UserAvatar profile={author ?? null} size="lg" still />
                 </button>
               </ProfilePopover>
               <div className="mb-0.5 flex items-baseline gap-2 leading-[1.375]">
@@ -587,7 +587,7 @@ export const MessageItem = memo(function MessageItem({
           </AlertDialogHeader>
           <div className="pointer-events-none rounded-md border border-border py-2 shadow-sm">
             <div className="flex gap-3 px-3">
-              <UserAvatar profile={author ?? null} size="lg" />
+              <UserAvatar profile={author ?? null} size="lg" still />
               <div className="flex min-w-0 flex-col">
                 <span className="text-sm font-medium text-header">
                   {displayName(author)}

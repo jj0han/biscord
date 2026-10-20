@@ -45,7 +45,7 @@ function MemberRow({
                 : undefined
             }
             className={cn(
-              "flex h-11 w-full items-center gap-3 rounded-md bg-cover bg-right bg-no-repeat px-2 text-left transition-colors hover:bg-hover compact:h-9 spacious:h-13",
+              "group/play flex h-11 w-full items-center gap-3 rounded-md bg-cover bg-right bg-no-repeat px-2 text-left transition-colors hover:bg-hover compact:h-9 spacious:h-13",
               offline && "opacity-30 hover:opacity-100"
             )}
           >
@@ -54,6 +54,7 @@ function MemberRow({
               size="md"
               showStatus={!offline}
               decoration
+              still
             />
             <span className="flex min-w-0 flex-1 flex-col">
               <span
@@ -113,7 +114,13 @@ function Section({
 }
 
 /** Right-hand member list, grouped by hoisted role then online/offline. */
-export function MemberList({ serverId }: { serverId: string }) {
+export function MemberList({
+  serverId,
+  className,
+}: {
+  serverId: string
+  className?: string
+}) {
   const server = useServer(serverId)
   const members = useMembers(serverId)
   const roles = useRoles(serverId)
@@ -167,7 +174,12 @@ export function MemberList({ serverId }: { serverId: string }) {
   }, [members, roles, assignments, presence, server?.owner_id])
 
   return (
-    <aside className="flex w-66 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">
+    <aside
+      className={cn(
+        "flex w-66 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4",
+        className
+      )}
+    >
       <ServerActivity serverId={serverId} />
       {groups.hoisted.map(({ role, rows }) => (
         <Section

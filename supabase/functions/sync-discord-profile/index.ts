@@ -62,8 +62,12 @@ Deno.serve(async (req) => {
     return json({ error: "unauthorized" }, 401)
   }
 
-  const { providerToken } = (await req.json().catch(() => ({}))) as {
+  const { providerToken, overwrite = [] } = (await req
+    .json()
+    .catch(() => ({}))) as {
     providerToken?: string
+    /** customized fields the user chose to replace with Discord's */
+    overwrite?: string[]
   }
   if (!providerToken) {
     return json({ error: "missing providerToken" }, 400)
@@ -132,9 +136,24 @@ Deno.serve(async (req) => {
     synced_at: new Date().toISOString(),
   }
 
+  // fields the user customized in Biscord stay theirs unless asked
+  const { data: current } = await adminClient()
+    .from("profiles")
+    .select("overrides")
+    .eq("id", auth.user.id)
+    .single()
+  const kept = ((current?.overrides as string[] | null) ?? []).filter(
+    (field) => !overwrite.includes(field)
+  )
+  const update: Record<string, unknown> = { ...profile, overrides: kept }
+  for (const field of kept) {
+    delete update[field]
+    if (field === "banner_color") delete update.accent_color
+  }
+
   const { data, error } = await adminClient()
     .from("profiles")
-    .update(profile)
+    .update(update)
     .eq("id", auth.user.id)
     .select()
     .single()

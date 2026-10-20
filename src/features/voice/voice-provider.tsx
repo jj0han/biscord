@@ -18,7 +18,7 @@ import {
   RoomEvent,
   Track,
 } from "livekit-client"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { useUserId } from "@/features/auth/auth-provider"
@@ -39,10 +39,12 @@ import { useSpeakingMonitor } from "@/features/voice/speaking"
 import { StreamPip } from "@/features/voice/stream-pip"
 import {
   DM_SCOPE,
+  joinVoice,
   leaveVoice,
   useVoice,
   voicePresenceChannels,
   voiceStatesStore,
+  voiceStore,
 } from "@/features/voice/voice-store"
 import { useSubscriptions } from "@/features/voice/watching"
 import { playSound } from "@/lib/sounds"
@@ -151,7 +153,7 @@ function useMicPipeline(connected: boolean, audio: AudioSettings) {
   const denoise = audio.advancedNoiseSuppression
   useEffect(() => {
     if (!connected || !track) return
-    // rebuilt when RNNoise is toggled; setProcessor swaps the old one out
+    // rebuilt when voice isolation is toggled; setProcessor swaps the old one out
     void track
       .setProcessor(
         new MicProcessor(
@@ -271,6 +273,30 @@ function VoiceBridge() {
   // Presence only goes out once LiveKit actually accepted us, so a failed
   // join can never leave a "ghost" in the channel list.
   const connected = !!connection && state === ConnectionState.Connected
+
+  // A dropped connection that never reported "disconnected" would leave the
+  // call UI up while we're actually out: treat Disconnected as the end.
+  const wasConnected = useRef(false)
+  useEffect(() => {
+    if (connected) wasConnected.current = true
+    else if (!connection) wasConnected.current = false
+    else if (wasConnected.current && state === ConnectionState.Disconnected) {
+      wasConnected.current = false
+      endCallUnexpectedly()
+    }
+  }, [connected, connection, state])
+
+  // Keep the page from being frozen while minimized/in the tray: a held Web
+  // Lock opts the tab out of Chromium's background freezing during a call.
+  useEffect(() => {
+    if (!connected || !navigator.locks) return
+    let release: () => void = () => {}
+    void navigator.locks.request(
+      "biscord:in-call",
+      () => new Promise<void>((resolve) => (release = resolve))
+    )
+    return () => release()
+  }, [connected])
   const audio = useAudioSettings()
   const pttDown = usePushToTalk(audio.pushToTalk, audio.pushToTalkKey)
   const micEnabled = !muted && !deafened && (!audio.pushToTalk || pttDown)
@@ -379,6 +405,34 @@ function callAudioContext() {
   return audioContext
 }
 
+const DISCONNECT_MESSAGES: Partial<Record<DisconnectReason, string>> = {
+  [DisconnectReason.DUPLICATE_IDENTITY]:
+    "Você entrou nesta chamada em outro lugar (outro dispositivo ou aba).",
+  [DisconnectReason.PARTICIPANT_REMOVED]: "Você foi removido da chamada.",
+  [DisconnectReason.ROOM_DELETED]: "A chamada foi encerrada.",
+}
+
+/**
+ * The call ended without us asking (network drop, server kick…): clear the
+ * call UI, play the sound and say why, with a one-click way back in.
+ */
+function endCallUnexpectedly(reason?: DisconnectReason) {
+  const connection = voiceStore.get().connection
+  if (!connection) return
+  playSound("disconnect")
+  leaveVoice()
+  toast.error("Você foi desconectado da chamada.", {
+    description:
+      (reason !== undefined && DISCONNECT_MESSAGES[reason]) ||
+      "A conexão com o servidor de voz caiu.",
+    duration: 15000,
+    action: {
+      label: "Reconectar",
+      onClick: () => void joinVoice(connection.channelId, connection.scope),
+    },
+  })
+}
+
 export function VoiceProvider({ children }: { children: React.ReactNode }) {
   const { data: servers } = useQuery(serversQuery)
   const { connection } = useVoice()
@@ -411,7 +465,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         },
         dynacast: true,
         // lets per-user and output volume go above 100%
-        // a 48 kHz context so RNNoise can run in the mic processor
+        // a 48 kHz context so voice isolation can run in the mic processor
         webAudioMix: { audioContext: callAudioContext() },
         audioCaptureDefaults: {
           deviceId: audioDevice("audioinput"),
@@ -424,8 +478,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       onDisconnected={(reason) => {
         // switching channels disconnects on purpose; anything else ends the call
         if (reason === DisconnectReason.CLIENT_INITIATED) return
-        playSound("disconnect")
-        leaveVoice()
+        endCallUnexpectedly(reason)
       }}
       onError={(error) => {
         // a failed connect never emits "disconnected", so end it here

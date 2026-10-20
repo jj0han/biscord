@@ -31,7 +31,7 @@ export function UserArea() {
   return (
     <div
       ref={ref}
-      className="absolute bottom-2 left-2 z-20 w-[calc(var(--rail-width)+var(--sidebar-width)-16px)] overflow-hidden rounded-lg border border-border bg-panel shadow-lg"
+      className="absolute bottom-2 left-2 z-20 w-[calc(var(--rail-width)+var(--sidebar-width)-16px)] overflow-hidden rounded-lg border border-border bg-panel shadow-lg max-md:z-50 max-md:hidden max-md:max-w-[calc(100vw-2rem-16px)] max-md:nav-open:block"
     >
       <VoiceConnectedPanel />
       <UserPanel />

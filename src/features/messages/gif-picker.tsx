@@ -248,17 +248,65 @@ function Favorites({ onPick }: { onPick: (tile: Tile) => void }) {
 }
 
 /** Discord's GIF button in the composer, backed by the `gifs` edge function. */
-export function GifPicker({ onPick }: { onPick: (gif: Gif) => void }) {
-  const [open, setOpen] = useState(false)
+/** Search, "Em alta" and favorites: shared by the chat picker and profiles. */
+export function GifBrowser({ onPick }: { onPick: (gif: Gif) => void }) {
   const [query, setQuery] = useState("")
   const [tab, setTab] = useState<"favorites" | "trending">("trending")
   const term = useDeferredValue(query.trim())
 
   const pick = (tile: Tile) => {
-    setOpen(false)
     setQuery("")
     onPick({ url: tile.url, width: tile.width, height: tile.height })
   }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-col gap-2 border-b border-border p-3">
+        <div className="flex h-8 items-center gap-2 rounded-md bg-input px-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Pesquisar no GIPHY"
+            autoFocus
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <MagnifyingGlassIcon className="size-4 text-interactive" />
+        </div>
+        {!term && (
+          <div className="flex gap-1">
+            {(
+              [
+                { key: "favorites", label: "Favoritos", icon: StarIcon },
+                { key: "trending", label: "Em alta", icon: TrendUpIcon },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setTab(option.key)}
+                className={cn(
+                  "flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-interactive hover:bg-hover hover:text-interactive-hover",
+                  tab === option.key && "bg-selected text-header"
+                )}
+              >
+                <option.icon className="size-4" />
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {term || tab === "trending" ? (
+        <SearchResults term={term} onPick={pick} />
+      ) : (
+        <Favorites onPick={pick} />
+      )}
+    </div>
+  )
+}
+
+export function GifPicker({ onPick }: { onPick: (gif: Gif) => void }) {
+  const [open, setOpen] = useState(false)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -272,48 +320,14 @@ export function GifPicker({ onPick }: { onPick: (gif: Gif) => void }) {
         side="top"
         align="end"
         sideOffset={16}
-        className="h-110 w-105 gap-0 overflow-hidden rounded-lg border border-border bg-sidebar p-0"
+        className="flex h-110 w-105 max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-lg border border-border bg-sidebar p-0"
       >
-        <div className="flex flex-col gap-2 border-b border-border p-3">
-          <div className="flex h-8 items-center gap-2 rounded-md bg-input px-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Pesquisar no GIPHY"
-              autoFocus
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <MagnifyingGlassIcon className="size-4 text-interactive" />
-          </div>
-          {!term && (
-            <div className="flex gap-1">
-              {(
-                [
-                  { key: "favorites", label: "Favoritos", icon: StarIcon },
-                  { key: "trending", label: "Em alta", icon: TrendUpIcon },
-                ] as const
-              ).map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setTab(option.key)}
-                  className={cn(
-                    "flex h-7 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-interactive hover:bg-hover hover:text-interactive-hover",
-                    tab === option.key && "bg-selected text-header"
-                  )}
-                >
-                  <option.icon className="size-4" />
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {term || tab === "trending" ? (
-          <SearchResults term={term} onPick={pick} />
-        ) : (
-          <Favorites onPick={pick} />
-        )}
+        <GifBrowser
+          onPick={(gif) => {
+            setOpen(false)
+            onPick(gif)
+          }}
+        />
       </PopoverContent>
     </Popover>
   )

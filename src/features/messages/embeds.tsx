@@ -97,7 +97,7 @@ function EmbedCard({ embed }: { embed: Embed }) {
 
   return (
     <div
-      className="grid max-w-108 rounded-sm border-l-4 border-sidebar-border bg-card"
+      className="grid max-w-108 min-w-0 rounded-sm border-l-4 border-sidebar-border bg-card"
       style={{ borderLeftColor: colorOf(embed) }}
     >
       <div className="flex gap-4 px-4 pt-2 pb-4">

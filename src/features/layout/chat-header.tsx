@@ -1,8 +1,9 @@
-import { BellIcon, BellSlashIcon } from "@phosphor-icons/react"
+import { BellIcon, BellSlashIcon, ListIcon } from "@phosphor-icons/react"
 import type { ReactNode } from "react"
 
 import { TooltipContent } from "@/components/tooltip-content"
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip"
+import { setMobileNav } from "@/features/layout/mobile-nav"
 import {
   toggleChannelMute,
   useChannelMuted,
@@ -18,10 +19,20 @@ export function ChatHeader({
   actions?: ReactNode
 }) {
   return (
-    <header className="z-10 flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-4 shadow-sm">
+    <header className="z-10 flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-4 shadow-sm max-md:px-2">
+      <button
+        type="button"
+        aria-label="Abrir menu"
+        onClick={() => setMobileNav(true)}
+        className="flex size-8 shrink-0 items-center justify-center rounded-md text-interactive hover:bg-hover hover:text-interactive-hover md:hidden"
+      >
+        <ListIcon weight="bold" className="size-5" />
+      </button>
       <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
       {actions && (
-        <div className="flex shrink-0 items-center gap-4">{actions}</div>
+        <div className="flex shrink-0 items-center gap-4 max-md:gap-3">
+          {actions}
+        </div>
       )}
     </header>
   )

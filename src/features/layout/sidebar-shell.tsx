@@ -25,7 +25,7 @@ function ResizeHandle() {
       role="separator"
       aria-orientation="vertical"
       aria-label="Redimensionar barra lateral"
-      className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize"
+      className="absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize max-md:hidden"
       onPointerDown={(e) => {
         const aside = e.currentTarget.parentElement
         if (!aside) return
@@ -68,7 +68,7 @@ export function SidebarShell({
   children: ReactNode
 }) {
   return (
-    <aside className="relative flex w-(--sidebar-width) shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+    <aside className="relative flex w-(--sidebar-width) shrink-0 flex-col border-r border-sidebar-border bg-sidebar max-md:absolute max-md:inset-y-0 max-md:left-(--rail-width) max-md:z-40 max-md:hidden max-md:max-w-[calc(100vw-var(--rail-width)-2rem)] max-md:rounded-tl-lg max-md:border-t max-md:border-l max-md:nav-open:flex">
       {header}
       <div className="flex flex-1 scrollbar-thin flex-col overflow-y-auto px-2 pt-2 pb-[calc(var(--user-area-height)+1rem)]">
         {children}

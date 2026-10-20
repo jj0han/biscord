@@ -35,8 +35,11 @@ export function ChatView({ channel }: { channel: Channel }) {
   const members = useMembers(serverId)
   const channels = useChannels(serverId)
   const { can } = usePermissions(serverId)
-  const [showMembers, setShowMembers] = useState(() =>
-    readPreference("member-list", true)
+  // narrow windows start without the member list, like Discord
+  const [showMembers, setShowMembers] = useState(
+    () =>
+      readPreference("member-list", true) &&
+      window.matchMedia("(min-width: 1024px)").matches
   )
   const [search, setSearch] = useState("")
 
@@ -78,7 +81,10 @@ export function ChatView({ channel }: { channel: Channel }) {
   const sidePanel = search.trim() ? (
     <SearchPanel channelIds={textChannelIds} term={search.trim()} />
   ) : showMembers ? (
-    <MemberList serverId={serverId} />
+    <MemberList
+      serverId={serverId}
+      className="max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-20 max-lg:shadow-2xl"
+    />
   ) : null
 
   return (
@@ -107,7 +113,9 @@ export function ChatView({ channel }: { channel: Channel }) {
               >
                 <UsersIcon className="size-5" />
               </HeaderButton>
-              <SearchBox value={search} onChange={setSearch} />
+              <div className="max-md:hidden">
+                <SearchBox value={search} onChange={setSearch} />
+              </div>
             </>
           }
         >
@@ -118,8 +126,11 @@ export function ChatView({ channel }: { channel: Channel }) {
           <h1 className="shrink-0 font-semibold text-header">{channel.name}</h1>
           {channel.topic && (
             <>
-              <Separator orientation="vertical" className="mx-2 h-6" />
-              <span className="truncate text-sm text-muted-foreground">
+              <Separator
+                orientation="vertical"
+                className="mx-2 h-6 max-md:hidden"
+              />
+              <span className="truncate text-sm text-muted-foreground max-md:hidden">
                 <Markdown content={channel.topic} />
               </span>
             </>

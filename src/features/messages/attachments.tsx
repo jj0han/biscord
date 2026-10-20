@@ -19,9 +19,11 @@ export function fitMedia(
 ) {
   if (!width || !height) return { maxWidth: maxW, maxHeight: maxH }
   const scale = Math.min(1, maxW / width, maxH / height)
+  // fluid: full size on wide screens, shrinks with the chat on narrow ones
   return {
-    width: Math.round(width * scale),
-    height: Math.round(height * scale),
+    width: "100%",
+    maxWidth: Math.round(width * scale),
+    aspectRatio: `${width} / ${height}`,
   }
 }
 

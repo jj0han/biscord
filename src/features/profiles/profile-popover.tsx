@@ -143,6 +143,12 @@ export function ProfileCard({
           <ProfileBadges profile={profile} className="mt-1" />
         </div>
 
+        {profile.bio && (
+          <p className="line-clamp-6 text-sm break-words whitespace-pre-wrap">
+            {profile.bio}
+          </p>
+        )}
+
         <div className="flex flex-col gap-1">
           <span className="text-xs font-bold text-header">Membro desde</span>
           <span className="text-sm">

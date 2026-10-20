@@ -322,6 +322,12 @@ function ProfileModalContent({
             </div>
           )}
 
+          {profile.bio && (
+            <Section title="Sobre mim">
+              <p className="break-words whitespace-pre-wrap">{profile.bio}</p>
+            </Section>
+          )}
+
           <Section title="Membro desde">
             <div className="flex flex-wrap items-center gap-2">
               {discordSince && (

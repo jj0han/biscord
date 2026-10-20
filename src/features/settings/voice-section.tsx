@@ -257,7 +257,7 @@ export function VoiceSection() {
 
       <div className="flex flex-col gap-6">
         <ToggleRow
-          title="Isolamento de voz (RNNoise)"
+          title="Isolamento de voz (IA)"
           hint="Uma rede neural remove teclado, ventilador e outros ruídos e deixa só a sua voz."
           checked={audio.advancedNoiseSuppression}
           onChange={(advancedNoiseSuppression) =>

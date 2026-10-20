@@ -10,6 +10,8 @@
 @custom-variant compact (&:where(.density-compact *));
 @custom-variant spacious (&:where(.density-spacious *));
 @custom-variant chat-compact (&:where(.chat-compact *));
+/* small screens: the navigation drawer is open (see mobile-nav.ts) */
+@custom-variant nav-open (&:where(.nav-open *));
 
 /* layout constants shared by the shell, the sidebar and the floating user card */
 :root {

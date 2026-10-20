@@ -7,7 +7,7 @@ import {
 } from "@/features/voice/audio-settings"
 import { audioDevice } from "@/features/voice/devices"
 import {
-  createRnnoise,
+  createDenoiser,
   micLevelStore,
   rmsToDb,
 } from "@/features/voice/mic-processor"
@@ -110,14 +110,14 @@ export function useMicLevel(active: boolean, loopback = false) {
           return
         }
         stream = media
-        // 48 kHz so the mic test can run RNNoise, like the real call
+        // 48 kHz so the mic test can run voice isolation, like the real call
         context = new AudioContext({ sampleRate: 48000 })
         const source = context.createMediaStreamSource(media)
         const gain = context.createGain()
         const analyser = context.createAnalyser()
         analyser.fftSize = 1024
         const denoise = settings.advancedNoiseSuppression
-          ? await createRnnoise(context)
+          ? await createDenoiser(context)
           : undefined
         if (cancelled) return
         if (denoise) source.connect(denoise).connect(gain)

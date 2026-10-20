@@ -339,7 +339,7 @@ export async function setMemberRole(
 }
 
 export async function uploadFile(
-  bucket: "attachments" | "icons",
+  bucket: "attachments" | "icons" | "profiles",
   userId: string,
   file: File
 ) {

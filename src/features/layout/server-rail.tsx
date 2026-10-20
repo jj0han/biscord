@@ -135,7 +135,7 @@ export function ServerRail() {
   return (
     <nav
       aria-label="Servidores"
-      className="scrollbar-none flex w-(--rail-width) shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail pt-2 pb-[calc(var(--user-area-height)+1rem)]"
+      className="scrollbar-none flex w-(--rail-width) shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail pt-2 pb-[calc(var(--user-area-height)+1rem)] max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:hidden max-md:nav-open:flex"
     >
       <RailItem
         label="Mensagens diretas"

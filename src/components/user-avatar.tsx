@@ -71,7 +71,43 @@ type UserAvatarProps = {
   surface?: "sidebar" | "background" | "panel" | "popover" | "card"
   speaking?: boolean
   decoration?: boolean
+  /**
+   * Show an animated avatar frozen until its `group/play` ancestor (a chat
+   * message, a member row) is hovered — Discord does this in busy lists.
+   */
+  still?: boolean
   className?: string
+}
+
+/** Discord serves a static PNG of animated ("a_") avatars at the same path. */
+function isAnimated(url: string) {
+  return /\.gif(\?|$)/i.test(url) || /\/a_[0-9a-f]+\.(gif|webp)/i.test(url)
+}
+
+function staticDiscordUrl(url: string) {
+  return url.includes("cdn.discordapp.com")
+    ? url.replace(/\.(gif|webp)(\?|$)/i, ".png$2")
+    : null
+}
+
+/** First frame of any GIF, drawn once on a canvas. */
+function StillFrame({ src, className }: { src: string; className?: string }) {
+  return (
+    <canvas
+      aria-hidden
+      className={className}
+      ref={(canvas) => {
+        if (!canvas) return
+        const img = new Image()
+        img.onload = () => {
+          canvas.width = img.naturalWidth
+          canvas.height = img.naturalHeight
+          canvas.getContext("2d")?.drawImage(img, 0, 0)
+        }
+        img.src = src
+      }}
+    />
+  )
 }
 
 const SURFACE_RING = {
@@ -90,12 +126,18 @@ export function UserAvatar({
   surface = "sidebar",
   speaking = false,
   decoration = false,
+  still = false,
   className,
 }: UserAvatarProps) {
   const live = usePresence(showStatus && !status ? profile?.id : null)
   const resolved = status ?? live
   const s = SIZES[size]
   const name = displayName(profile)
+  const url = profile?.avatar_url
+  const freeze = still && !!url && isAnimated(url)
+  const staticUrl = freeze ? staticDiscordUrl(url) : null
+  const stillClass =
+    "pointer-events-none absolute inset-0 size-full rounded-full object-cover group-hover/play:hidden"
 
   return (
     <span className={cn("relative inline-flex shrink-0", s.box, className)}>
@@ -106,9 +148,18 @@ export function UserAvatar({
             "ring-2 ring-success ring-offset-2 ring-offset-transparent"
         )}
       >
-        {profile?.avatar_url && (
-          <AvatarImage src={profile.avatar_url} alt={name} draggable={false} />
-        )}
+        {url && <AvatarImage src={url} alt={name} draggable={false} />}
+        {freeze &&
+          (staticUrl ? (
+            <img
+              src={staticUrl}
+              alt=""
+              draggable={false}
+              className={stillClass}
+            />
+          ) : (
+            <StillFrame src={url} className={stillClass} />
+          ))}
         <AvatarFallback
           className={cn(
             "bg-primary font-medium text-primary-foreground",

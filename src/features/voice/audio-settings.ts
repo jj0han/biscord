@@ -11,7 +11,7 @@ export type AudioSettings = {
   outputVolume: number
   /** the browser's built-in WebRTC noise suppression */
   noiseSuppression: boolean
-  /** RNNoise in our mic pipeline (Biscord's "Isolamento de voz") */
+  /** GTCRN voice isolation in our mic pipeline (Biscord's "Isolamento de voz") */
   advancedNoiseSuppression: boolean
   echoCancellation: boolean
   autoGainControl: boolean
@@ -55,7 +55,7 @@ function load(): AudioSettings {
     const saved = raw
       ? { ...defaults, ...(JSON.parse(raw) as AudioSettings) }
       : defaults
-    // older saves predate RNNoise: the isolation preset now means RNNoise
+    // older saves predate voice isolation: the preset now means it
     return saved.inputProfile === "isolation"
       ? { ...saved, noiseSuppression: false, advancedNoiseSuppression: true }
       : saved
@@ -72,7 +72,7 @@ export function updateAudioSettings(patch: Partial<AudioSettings>) {
     // the presets own the processing toggles; editing one switches to custom
     if (patch.inputProfile === "isolation") {
       Object.assign(next, {
-        // RNNoise does a much cleaner job than the browser's suppressor;
+        // voice isolation does a much cleaner job than the browser's suppressor;
         // running both just muffles the voice
         noiseSuppression: false,
         advancedNoiseSuppression: true,

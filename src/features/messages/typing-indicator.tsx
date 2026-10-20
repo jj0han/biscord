@@ -26,7 +26,7 @@ export function TypingIndicator({
   serverId: string | null
 }) {
   return (
-    <div className="flex h-6 items-center gap-1 bg-background px-4 text-xs text-foreground">
+    <div className="fade-t flex h-6 items-center gap-1 bg-linear-0 from-background via-transparent to-transparent px-4 text-xs text-foreground">
       {userIds.length > 0 && (
         <>
           <span className="flex gap-0.5 pr-1" aria-hidden>

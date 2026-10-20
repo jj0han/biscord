@@ -1,6 +1,6 @@
 [package]
 name = "biscord"
-version = "0.1.8"
+version = "0.1.9"
 description = "Biscord desktop"
 authors = ["jj0han"]
 license = ""

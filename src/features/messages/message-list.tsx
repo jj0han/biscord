@@ -90,7 +90,7 @@ export function MessageList({
     <div
       ref={scrollRef}
       onScroll={onScroll}
-      className="flex min-h-0 flex-1 scrollbar-thin flex-col-reverse overflow-x-hidden overflow-y-auto"
+      className="flex min-h-0 flex-1 scrollbar-thin flex-col-reverse overflow-x-hidden overflow-y-auto py-4"
     >
       <div className="flex flex-col">
         {isPending ? (

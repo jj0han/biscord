@@ -43,6 +43,11 @@ import {
   useChannelVoiceStates,
   useVoice,
 } from "@/features/voice/voice-store"
+import {
+  stopWatching,
+  useWatching,
+  watchStream,
+} from "@/features/voice/watching"
 import { displayName } from "@/lib/format"
 import { useImageColor } from "@/lib/image-color"
 import type { Channel } from "@/lib/types"
@@ -89,19 +94,25 @@ function Tile({
   width,
   height,
   onClick,
+  onWatch,
 }: {
   trackRef: TrackReferenceOrPlaceholder
   serverId: string | null
   width: number
   height: number
   onClick: () => void
+  onWatch?: () => void
 }) {
   const participant = trackRef.participant
   const profile = useProfile(participant.identity)
   const member = useMember(serverId, participant.identity)
   const speaking = useSpeaking(participant.identity)
-  const hasVideo = isTrackReference(trackRef) && !trackRef.publication.isMuted
   const isScreen = trackRef.source === Track.Source.ScreenShare
+  const watching = useWatching(participant.identity)
+  // someone else's stream we haven't chosen to watch (not even received)
+  const unwatched = isScreen && !participant.isLocal && !watching
+  const hasVideo =
+    isTrackReference(trackRef) && !trackRef.publication.isMuted && !unwatched
   const name = displayName(profile, member?.nickname)
   const small = height < 140
   // like Discord, a tile without video takes the profile's colors: the
@@ -145,7 +156,11 @@ function Tile({
               )}
             />
           ) : (
-            <UserAvatar profile={profile ?? null} size={small ? "lg" : "xl"} />
+            <UserAvatar
+              profile={profile ?? null}
+              size={small || unwatched ? "lg" : "xl"}
+              className={cn(unwatched && !small && "mb-16")}
+            />
           )}
           <span className="absolute bottom-2 left-2 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-sm font-medium text-white">
             {isScreen && <MonitorArrowUpIcon className="size-4 shrink-0" />}
@@ -156,11 +171,34 @@ function Tile({
           </span>
         </button>
       </UserVoiceMenu>
+      {unwatched && !small && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 pt-14">
+          <span className="text-sm font-medium text-white">
+            {name} está transmitindo
+          </span>
+          <Button
+            size="sm"
+            className="pointer-events-auto"
+            onClick={() => onWatch?.()}
+          >
+            Assistir transmissão
+          </Button>
+        </div>
+      )}
       {streamAudio && !small && (
-        <StreamVolumeControl
-          userId={participant.identity}
-          className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-        />
+        <>
+          <StreamVolumeControl
+            userId={participant.identity}
+            className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+          />
+          <button
+            type="button"
+            onClick={() => stopWatching(participant.identity)}
+            className="absolute top-2 right-2 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80 focus-visible:opacity-100"
+          >
+            Parar de assistir
+          </button>
+        </>
       )}
     </div>
   )
@@ -267,6 +305,10 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
             width={tileSize.width}
             height={tileSize.height}
             onClick={() => toggleFocus(trackRef)}
+            onWatch={() => {
+              watchStream(trackRef.participant.identity)
+              setFocusId(keyOf(trackRef))
+            }}
           />
         ))}
       </div>
@@ -298,6 +340,10 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
               width={176}
               height={99}
               onClick={() => toggleFocus(trackRef)}
+              onWatch={() => {
+                watchStream(trackRef.participant.identity)
+                setFocusId(keyOf(trackRef))
+              }}
             />
           ))}
         </div>

@@ -13,6 +13,7 @@ import {
   ConnectionState,
   DisconnectReason,
   type LocalAudioTrack,
+  MediaDeviceFailure,
   type RemoteTrackPublication,
   RoomEvent,
   Track,
@@ -29,6 +30,10 @@ import {
   useAudioSettings,
 } from "@/features/voice/audio-settings"
 import { audioDevice } from "@/features/voice/devices"
+import {
+  micBlockedStore,
+  MicPermissionGuard,
+} from "@/features/voice/mic-permission"
 import { MicProcessor } from "@/features/voice/mic-processor"
 import { useSpeakingMonitor } from "@/features/voice/speaking"
 import { StreamPip } from "@/features/voice/stream-pip"
@@ -39,6 +44,7 @@ import {
   voicePresenceChannels,
   voiceStatesStore,
 } from "@/features/voice/voice-store"
+import { useSubscriptions } from "@/features/voice/watching"
 import { playSound } from "@/lib/sounds"
 import { supabase } from "@/lib/supabase"
 import type { VoiceState } from "@/lib/types"
@@ -272,6 +278,7 @@ function VoiceBridge() {
   useMicPipeline(connected, audio)
   useOutputVolumes(connected, audio)
   useDeviceRecovery(connected)
+  useSubscriptions(connected)
   useSpeakingMonitor(connected)
 
   useEffect(() => {
@@ -340,6 +347,7 @@ function VoiceBridge() {
   return (
     <>
       <RoomAudioRenderer muted={deafened} />
+      <MicPermissionGuard connected={connected} micEnabled={micEnabled} />
       {connected && !canPlayAudio && (
         <button
           type="button"
@@ -378,6 +386,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       serverUrl={connection?.url}
       token={connection?.token}
       connect={!!connection}
+      // streams are only received while watched (see watching.ts)
+      connectOptions={{ autoSubscribe: false }}
       // the mic is driven only by VoiceBridge (mute, deafen, push-to-talk), so
       // joining while muted never publishes an open mic, even for a moment
       audio={false}
@@ -418,6 +428,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
         leaveVoice()
       }}
       onMediaDeviceFailure={(failure, kind) => {
+        if (
+          kind !== "videoinput" &&
+          failure === MediaDeviceFailure.PermissionDenied
+        ) {
+          micBlockedStore.set(true)
+          return
+        }
         toast.error(
           kind === "videoinput"
             ? "Não foi possível acessar a câmera."

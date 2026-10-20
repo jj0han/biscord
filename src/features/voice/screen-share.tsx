@@ -1,6 +1,16 @@
 import { useLocalParticipant } from "@livekit/components-react"
 import { MonitorArrowUpIcon } from "@phosphor-icons/react"
-import { type AudioCaptureOptions, AudioPresets } from "livekit-client"
+import {
+  type AudioCaptureOptions,
+  AudioPresets,
+  type LocalAudioTrack,
+  type LocalParticipant,
+  type LocalTrackPublication,
+  type LocalVideoTrack,
+  ParticipantEvent,
+  type ScreenShareCaptureOptions,
+  Track,
+} from "livekit-client"
 import { type ReactElement, useState } from "react"
 import { toast } from "sonner"
 
@@ -11,6 +21,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
+import {
+  hasNativeStreamAudio,
+  type NativeStreamAudio,
+  startNativeStreamAudio,
+} from "@/features/voice/native-stream-audio"
 import { playSound } from "@/lib/sounds"
 import { cn } from "@/lib/utils"
 
@@ -38,6 +53,8 @@ type StreamSettings = {
   resolution: (typeof RESOLUTIONS)[number]["key"]
   frameRate: (typeof FRAME_RATES)[number]
   audio: boolean
+  /** leave Discord's audio out of the stream (Windows desktop) */
+  skipDiscord: boolean
 }
 
 const KEY = "voice:stream-settings"
@@ -56,6 +73,79 @@ const defaults: StreamSettings = {
   resolution: "1080",
   frameRate: 30,
   audio: true,
+  skipDiscord: true,
+}
+
+/** Stereo Opus at 128 kbps without DTX/RED: music and games keep their range. */
+const STREAM_AUDIO_PUBLISH = {
+  audioPreset: AudioPresets.musicHighQualityStereo,
+  forceStereo: true,
+  dtx: false,
+  red: false,
+}
+
+function captureOptions(
+  settings: StreamSettings,
+  native: boolean
+): ScreenShareCaptureOptions {
+  const resolution = RESOLUTIONS.find((r) => r.key === settings.resolution)!
+  const browserAudio = settings.audio && !native
+  return {
+    audio: browserAudio
+      ? ({
+          // raw game/app audio sounds better without voice processing
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 2,
+          sampleRate: 48000,
+          // keep Biscord's own playback (everyone's voices) out of the
+          // capture, otherwise the call hears itself twice
+          restrictOwnAudio: true,
+          suppressLocalAudioPlayback: true,
+        } as unknown as AudioCaptureOptions)
+      : false,
+    systemAudio: browserAudio ? "include" : "exclude",
+    selfBrowserSurface: "exclude",
+    surfaceSwitching: "include",
+    contentHint: settings.frameRate >= 30 ? "motion" : "detail",
+    resolution: {
+      width: resolution.width,
+      height: resolution.height,
+      frameRate: settings.frameRate,
+    },
+  }
+}
+
+let nativeAudio: NativeStreamAudio | null = null
+
+async function stopNativeAudio() {
+  const current = nativeAudio
+  nativeAudio = null
+  await current?.stop()
+}
+
+/** Publishes the native capture as the stream's audio and ties it to it. */
+async function publishNativeAudio(
+  participant: LocalParticipant,
+  settings: StreamSettings
+) {
+  await stopNativeAudio()
+  nativeAudio = await startNativeStreamAudio(settings.skipDiscord)
+  await participant.publishTrack(nativeAudio.track, {
+    source: Track.Source.ScreenShareAudio,
+    name: "screen_share_audio",
+    ...STREAM_AUDIO_PUBLISH,
+  })
+  // ending the stream any other way (e.g. the OS "stop sharing" bar)
+  const onUnpublished = (publication: LocalTrackPublication) => {
+    if (publication.source !== Track.Source.ScreenShare) return
+    participant.off(ParticipantEvent.LocalTrackUnpublished, onUnpublished)
+    const audio = participant.getTrackPublication(Track.Source.ScreenShareAudio)
+    if (audio?.track) void participant.unpublishTrack(audio.track)
+    void stopNativeAudio()
+  }
+  participant.on(ParticipantEvent.LocalTrackUnpublished, onUnpublished)
 }
 
 function Choice<T extends string | number>({
@@ -112,40 +202,19 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
   const stop = async () => {
     setOpen(false)
     await localParticipant.setScreenShareEnabled(false)
+    await stopNativeAudio()
     playSound("streamStop")
   }
 
   const start = async () => {
     setOpen(false)
     const resolution = RESOLUTIONS.find((r) => r.key === settings.resolution)!
+    // on Windows desktop the audio comes from the native per-app capture
+    const native = hasNativeStreamAudio && settings.audio
     try {
       await localParticipant.setScreenShareEnabled(
         true,
-        {
-          audio: settings.audio
-            ? ({
-                // raw game/app audio sounds better without voice processing
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
-                channelCount: 2,
-                sampleRate: 48000,
-                // keep Biscord's own playback (everyone's voices) out of the
-                // capture, otherwise the call hears itself twice
-                restrictOwnAudio: true,
-                suppressLocalAudioPlayback: true,
-              } as unknown as AudioCaptureOptions)
-            : false,
-          systemAudio: settings.audio ? "include" : "exclude",
-          selfBrowserSurface: "exclude",
-          surfaceSwitching: "include",
-          contentHint: settings.frameRate >= 30 ? "motion" : "detail",
-          resolution: {
-            width: resolution.width,
-            height: resolution.height,
-            frameRate: settings.frameRate,
-          },
-        },
+        captureOptions(settings, native),
         {
           screenShareEncoding: {
             maxBitrate: Math.round(
@@ -155,14 +224,10 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
           },
           // the stream should be as sharp as possible for viewers
           screenShareSimulcastLayers: [],
-          // stereo Opus at 128 kbps without DTX/RED: music and games keep
-          // their full range instead of sounding like a phone call
-          audioPreset: AudioPresets.musicHighQualityStereo,
-          forceStereo: true,
-          dtx: false,
-          red: false,
+          ...STREAM_AUDIO_PUBLISH,
         }
       )
+      if (native) await publishNativeAudio(localParticipant, settings)
       playSound("streamStart")
       // Without restrictOwnAudio the capture also records the call itself, so
       // everyone would hear their own voice back through the stream.
@@ -171,10 +236,10 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
           string,
           boolean
         >
-      if (settings.audio && !supported.restrictOwnAudio) {
+      if (settings.audio && !native && !supported.restrictOwnAudio) {
         toast.warning("O áudio da sua transmissão pode incluir a chamada.", {
           description:
-            "Seu navegador/WebView não consegue excluir o som do Biscord da captura. Atualize o Biscord (ou o navegador) ou transmita uma janela específica.",
+            "Seu navegador não consegue excluir o som do Biscord da captura. Use o app desktop do Biscord ou transmita uma aba/janela específica.",
           duration: 10000,
         })
       }
@@ -183,6 +248,61 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
         toast.error("Não foi possível iniciar a transmissão.")
       }
     }
+  }
+
+  /** Discord's "Change stream": pick another screen/window and stay live. */
+  const switchSource = async () => {
+    setOpen(false)
+    const native = hasNativeStreamAudio && settings.audio
+    const options = captureOptions(settings, native)
+    let media: MediaStream
+    try {
+      media = await navigator.mediaDevices.getDisplayMedia({
+        video: options.resolution,
+        audio: options.audio as boolean | MediaTrackConstraints,
+        // Chromium-only hints, same as when going live
+        ...({
+          systemAudio: options.systemAudio,
+          selfBrowserSurface: "exclude",
+          surfaceSwitching: "include",
+        } as object),
+      })
+    } catch {
+      return // picker cancelled
+    }
+
+    const video = localParticipant.getTrackPublication(Track.Source.ScreenShare)
+      ?.track as LocalVideoTrack | undefined
+    const nextVideo = media.getVideoTracks()[0]
+    if (!video || !nextVideo) {
+      media.getTracks().forEach((t) => t.stop())
+      return
+    }
+    nextVideo.contentHint = options.contentHint ?? ""
+    const previous = video.mediaStreamTrack
+    await video.replaceTrack(nextVideo, false)
+    previous.stop()
+
+    // browser capture: the audio follows the newly picked surface
+    if (!native) {
+      const nextAudio = media.getAudioTracks()[0]
+      const audio = localParticipant.getTrackPublication(
+        Track.Source.ScreenShareAudio
+      )?.track as LocalAudioTrack | undefined
+      if (audio && nextAudio) {
+        const old = audio.mediaStreamTrack
+        await audio.replaceTrack(nextAudio, false)
+        old.stop()
+      } else if (audio) {
+        await localParticipant.unpublishTrack(audio)
+      } else if (nextAudio) {
+        await localParticipant.publishTrack(nextAudio, {
+          source: Track.Source.ScreenShareAudio,
+          ...STREAM_AUDIO_PUBLISH,
+        })
+      }
+    }
+    playSound("streamStart")
   }
 
   return (
@@ -200,9 +320,14 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
         </div>
 
         {isScreenShareEnabled ? (
-          <Button variant="destructive" onClick={stop}>
-            Parar transmissão
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button variant="secondary" onClick={switchSource}>
+              Mudar transmissão
+            </Button>
+            <Button variant="destructive" onClick={stop}>
+              Parar transmissão
+            </Button>
+          </div>
         ) : (
           <>
             <div className="flex flex-col gap-2">
@@ -241,6 +366,23 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
                 onCheckedChange={(audio) => update({ audio })}
               />
             </label>
+            {hasNativeStreamAudio && settings.audio && (
+              <label className="flex items-center justify-between gap-4 text-sm">
+                <span className="flex flex-col gap-1">
+                  <span className="font-medium text-header">
+                    Ignorar áudio do Discord
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    O som do Discord fica fora da transmissão. O som do Biscord
+                    nunca é transmitido.
+                  </span>
+                </span>
+                <Switch
+                  checked={settings.skipDiscord}
+                  onCheckedChange={(skipDiscord) => update({ skipDiscord })}
+                />
+              </label>
+            )}
             <Button onClick={start}>Ao vivo</Button>
           </>
         )}

@@ -2,6 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::Manager;
 
+#[cfg(windows)]
+mod stream_audio;
+
 /// Whether closing the window hides it to the system tray (set from the
 /// app's settings; on by default, like Discord).
 static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(true);
@@ -18,6 +21,37 @@ fn show_main(app: &tauri::AppHandle) {
     let _ = window.show();
     let _ = window.set_focus();
   }
+}
+
+/// A desktop app shouldn't depend on the webview's permission prompt: once a
+/// user clicked "Block" they'd have no way back into voice. Microphone and
+/// camera are always granted to our own pages (like Discord's desktop app).
+#[cfg(windows)]
+fn allow_media_permissions(window: &tauri::WebviewWindow) {
+  use webview2_com::Microsoft::Web::WebView2::Win32::{
+    COREWEBVIEW2_PERMISSION_KIND, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
+    COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
+  };
+  use webview2_com::PermissionRequestedEventHandler;
+
+  let _ = window.with_webview(|webview| unsafe {
+    let Ok(core) = webview.controller().CoreWebView2() else { return };
+    let mut token = Default::default();
+    let _ = core.add_PermissionRequested(
+      &PermissionRequestedEventHandler::create(Box::new(|_, args| {
+        let Some(args) = args else { return Ok(()) };
+        let mut kind = COREWEBVIEW2_PERMISSION_KIND::default();
+        args.PermissionKind(&mut kind)?;
+        if kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE
+          || kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA
+        {
+          args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW)?;
+        }
+        Ok(())
+      })),
+      &mut token,
+    );
+  });
 }
 
 /// Tray icon: click to bring the window back, menu to open or quit.
@@ -82,7 +116,13 @@ pub fn run() {
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_notification::init())
-    .invoke_handler(tauri::generate_handler![set_close_to_tray])
+    .invoke_handler(tauri::generate_handler![
+      set_close_to_tray,
+      #[cfg(windows)]
+      stream_audio::start_stream_audio,
+      #[cfg(windows)]
+      stream_audio::stop_stream_audio
+    ])
     .on_window_event(|window, event| {
       if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         if CLOSE_TO_TRAY.load(Ordering::Relaxed) {
@@ -98,6 +138,11 @@ pub fn run() {
       {
         use tauri_plugin_deep_link::DeepLinkExt;
         app.deep_link().register_all()?;
+      }
+
+      #[cfg(windows)]
+      if let Some(window) = app.get_webview_window("main") {
+        allow_media_permissions(&window);
       }
 
       #[cfg(desktop)]

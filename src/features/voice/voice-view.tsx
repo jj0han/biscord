@@ -20,6 +20,7 @@ import {
 import { Track } from "livekit-client"
 import { useEffect, useRef, useState } from "react"
 
+import { MonitorXIcon } from "@/components/icons"
 import { Spinner } from "@/components/spinner"
 import { TooltipContent } from "@/components/tooltip-content"
 import { Button } from "@/components/ui/button"
@@ -46,6 +47,7 @@ import {
 import {
   stopWatching,
   useWatching,
+  watchingStore,
   watchStream,
 } from "@/features/voice/watching"
 import { displayName } from "@/lib/format"
@@ -191,13 +193,21 @@ function Tile({
             userId={participant.identity}
             className="absolute right-2 bottom-2 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
           />
-          <button
-            type="button"
-            onClick={() => stopWatching(participant.identity)}
-            className="absolute top-2 right-2 rounded-md bg-black/60 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80 focus-visible:opacity-100"
-          >
-            Parar de assistir
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Parar de assistir"
+                  onClick={() => stopWatching(participant.identity)}
+                  className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-md bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive focus-visible:opacity-100"
+                />
+              }
+            >
+              <MonitorXIcon className="size-4.5" />
+            </TooltipTrigger>
+            <TooltipContent>Parar de assistir</TooltipContent>
+          </Tooltip>
         </>
       )}
     </div>
@@ -270,6 +280,17 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
     `${t.participant.identity}:${t.source}`
   const focused = tracks.find((t) => keyOf(t) === focusId)
   const others = focused ? tracks.filter((t) => t !== focused) : []
+  // the stream "Parar de assistir" acts on: the focused one, else any
+  const watching = watchingStore.useStore((set) => set)
+  const watchedStream =
+    focused?.source === Track.Source.ScreenShare &&
+    watching.has(focused.participant.identity)
+      ? focused.participant.identity
+      : tracks.find(
+          (t) =>
+            t.source === Track.Source.ScreenShare &&
+            watching.has(t.participant.identity)
+        )?.participant.identity
   const toggleFocus = (t: TrackReferenceOrPlaceholder) =>
     setFocusId((id) => (id === keyOf(t) ? null : keyOf(t)))
 
@@ -395,6 +416,16 @@ export function VoiceStage({ serverId = null }: { serverId?: string | null }) {
             <MonitorArrowUpIcon className="size-5" />
           </button>
         </ScreenSharePopover>
+        {watchedStream && (
+          <ControlButton
+            label="Parar de assistir"
+            danger
+            className="w-12"
+            onClick={() => stopWatching(watchedStream)}
+          >
+            <MonitorXIcon />
+          </ControlButton>
+        )}
         <ControlButton label="Desconectar" danger onClick={leaveVoice}>
           <PhoneDisconnectIcon className="size-5" />
         </ControlButton>

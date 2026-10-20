@@ -237,8 +237,9 @@ function useDeviceRecovery(connected: boolean) {
         const defaultMoved =
           wanted === "default" && group !== defaultGroup[kind]
         defaultGroup[kind] = group
-        if (initial) continue
-        if (room.getActiveDevice(kind) !== wanted || defaultMoved) {
+        // on join, always apply the saved choice: the call's audio context
+        // starts on the system default output whatever the room reports
+        if (initial || room.getActiveDevice(kind) !== wanted || defaultMoved) {
           await room.switchActiveDevice(kind, wanted).catch(() => undefined)
         }
       }
@@ -363,10 +364,18 @@ function VoiceBridge() {
 
 let audioContext: AudioContext | undefined
 function callAudioContext() {
-  audioContext ??= new AudioContext({
-    sampleRate: 48000,
-    latencyHint: "interactive",
-  })
+  if (!audioContext) {
+    audioContext = new AudioContext({
+      sampleRate: 48000,
+      latencyHint: "interactive",
+    })
+    // start on the saved output device, not the system default
+    const sink = audioDevice("audiooutput")
+    const context = audioContext as AudioContext & {
+      setSinkId?: (id: string) => Promise<void>
+    }
+    if (sink !== "default") void context.setSinkId?.(sink).catch(() => {})
+  }
   return audioContext
 }
 

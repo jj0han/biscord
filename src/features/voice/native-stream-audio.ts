@@ -69,10 +69,15 @@ export type NativeStreamAudio = {
   stop: () => Promise<void>
 }
 
+/** the native side runs one capture; a newer start replaces the older one */
+let generation = 0
+
 export async function startNativeStreamAudio(
-  skipDiscord: boolean
+  skipDiscord: boolean,
+  windowTitle: string | null
 ): Promise<NativeStreamAudio> {
   const { Channel, invoke } = await import("@tauri-apps/api/core")
+  const id = ++generation
   const context = new AudioContext({
     sampleRate: 48000,
     latencyHint: "interactive",
@@ -96,13 +101,16 @@ export async function startNativeStreamAudio(
     const buffer = toArrayBuffer(data)
     source.port.postMessage(buffer, [buffer])
   }
-  await invoke("start_stream_audio", { channel, skipDiscord })
+  await invoke("start_stream_audio", { channel, skipDiscord, windowTitle })
   await context.resume()
 
   return {
     track: destination.stream.getAudioTracks()[0],
     stop: async () => {
-      await invoke("stop_stream_audio").catch(() => undefined)
+      // stopping an old capture must not stop the one that replaced it
+      if (id === generation) {
+        await invoke("stop_stream_audio").catch(() => undefined)
+      }
       source.disconnect()
       await context.close().catch(() => undefined)
     },

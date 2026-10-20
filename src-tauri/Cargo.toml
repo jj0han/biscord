@@ -1,6 +1,6 @@
 [package]
 name = "biscord"
-version = "0.1.6"
+version = "0.1.7"
 description = "Biscord desktop"
 authors = ["jj0han"]
 license = ""
@@ -36,4 +36,5 @@ tauri-plugin-window-state = "2"
 sysinfo = { version = "0.38.4", default-features = false, features = ["system"] }
 wasapi = "0.26.0"
 webview2-com = "0.39.1"
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
 windows-core = "0.62.2"

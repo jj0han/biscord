@@ -125,13 +125,37 @@ async function stopNativeAudio() {
   await current?.stop()
 }
 
-/** Publishes the native capture as the stream's audio and ties it to it. */
+/** The shared window's title (Chromium labels window captures with it). */
+function sharedWindowTitle(participant: LocalParticipant) {
+  const track = participant.getTrackPublication(Track.Source.ScreenShare)?.track
+    ?.mediaStreamTrack
+  const surface = (track?.getSettings() as { displaySurface?: string })
+    ?.displaySurface
+  return surface === "window" ? (track?.label ?? null) : null
+}
+
+/**
+ * Publishes the native capture as the stream's audio (or swaps it in after
+ * "Mudar transmissão"): a shared window sends only its app's sound.
+ */
 async function publishNativeAudio(
   participant: LocalParticipant,
   settings: StreamSettings
 ) {
-  await stopNativeAudio()
-  nativeAudio = await startNativeStreamAudio(settings.skipDiscord)
+  const previous = nativeAudio
+  nativeAudio = await startNativeStreamAudio(
+    settings.skipDiscord,
+    sharedWindowTitle(participant)
+  )
+  const published = participant.getTrackPublication(
+    Track.Source.ScreenShareAudio
+  )?.track as LocalAudioTrack | undefined
+  if (published) {
+    await published.replaceTrack(nativeAudio.track, true)
+    await previous?.stop()
+    return
+  }
+  await previous?.stop()
   await participant.publishTrack(nativeAudio.track, {
     source: Track.Source.ScreenShareAudio,
     name: "screen_share_audio",
@@ -283,6 +307,8 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
     await video.replaceTrack(nextVideo, false)
     previous.stop()
 
+    // native capture: follow the newly picked window (or the whole screen)
+    if (native) await publishNativeAudio(localParticipant, settings)
     // browser capture: the audio follows the newly picked surface
     if (!native) {
       const nextAudio = media.getAudioTracks()[0]

@@ -37,11 +37,13 @@ import {
 import { MicProcessor } from "@/features/voice/mic-processor"
 import { useSpeakingMonitor } from "@/features/voice/speaking"
 import { StreamPip } from "@/features/voice/stream-pip"
+import { useUsageReporter } from "@/features/voice/usage-reporter"
 import {
   DM_SCOPE,
   joinVoice,
   leaveVoice,
   useVoice,
+  type VoiceConnection,
   voicePresenceChannels,
   voiceStatesStore,
   voiceStore,
@@ -282,7 +284,7 @@ function VoiceBridge() {
     else if (!connection) wasConnected.current = false
     else if (wasConnected.current && state === ConnectionState.Disconnected) {
       wasConnected.current = false
-      endCallUnexpectedly()
+      void endCallUnexpectedly()
     }
   }, [connected, connection, state])
 
@@ -306,6 +308,7 @@ function VoiceBridge() {
   useOutputVolumes(connected, audio)
   useDeviceRecovery(connected)
   useSubscriptions(connected)
+  useUsageReporter(connected)
   useSpeakingMonitor(connected)
 
   useEffect(() => {
@@ -416,12 +419,47 @@ const DISCONNECT_MESSAGES: Partial<Record<DisconnectReason, string>> = {
  * The call ended without us asking (network drop, server kick…): clear the
  * call UI, play the sound and say why, with a one-click way back in.
  */
-function endCallUnexpectedly(reason?: DisconnectReason) {
+/**
+ * LiveKit Cloud answers 429 when the project's monthly allowance (minutes or
+ * data) is used up; the websocket error alone doesn't say so, but its
+ * validate endpoint returns the reason as text.
+ */
+async function voiceServerRefusal(connection: VoiceConnection) {
+  try {
+    const host = new URL(connection.url).host
+    const response = await fetch(
+      `https://${host}/rtc/v1/validate?access_token=${encodeURIComponent(connection.token)}`
+    )
+    if (response.status !== 429) return null
+    const text = (await response.text()).toLowerCase()
+    return text.includes("bandwidth")
+      ? "O limite mensal de dados do servidor de voz (LiveKit) acabou. Ele volta no dia 1º do próximo mês."
+      : "O limite mensal de uso do servidor de voz (LiveKit) acabou. Ele volta no dia 1º do próximo mês."
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The call ended without us asking (network drop, server kick, quota…):
+ * clear the call UI, play the sound and say why, with a way back in.
+ */
+async function endCallUnexpectedly(reason?: DisconnectReason) {
   const connection = voiceStore.get().connection
   if (!connection) return
   playSound("disconnect")
   leaveVoice()
+  const refusal = await voiceServerRefusal(connection)
+  if (refusal) {
+    toast.error("O servidor de voz recusou a conexão.", {
+      id: "voice-failure",
+      description: refusal,
+      duration: 20000,
+    })
+    return
+  }
   toast.error("Você foi desconectado da chamada.", {
+    id: "voice-failure",
     description:
       (reason !== undefined && DISCONNECT_MESSAGES[reason]) ||
       "A conexão com o servidor de voz caiu.",
@@ -478,16 +516,31 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       onDisconnected={(reason) => {
         // switching channels disconnects on purpose; anything else ends the call
         if (reason === DisconnectReason.CLIENT_INITIATED) return
-        endCallUnexpectedly(reason)
+        void endCallUnexpectedly(reason)
       }}
       onError={(error) => {
         // a failed connect never emits "disconnected", so end it here
-        toast.error("Não foi possível conectar à voz.", {
-          description: error.message.includes("invalid token")
-            ? "O LiveKit recusou o token: confira se LIVEKIT_API_SECRET é o secret da mesma chave (LIVEKIT_API_KEY)."
-            : error.message,
-        })
+        const connection = voiceStore.get().connection
         leaveVoice()
+        void (async () => {
+          const refusal = connection
+            ? await voiceServerRefusal(connection)
+            : null
+          toast.error(
+            refusal
+              ? "O servidor de voz recusou a conexão."
+              : "Não foi possível conectar à voz.",
+            {
+              id: "voice-failure",
+              duration: refusal ? 20000 : undefined,
+              description:
+                refusal ??
+                (error.message.includes("invalid token")
+                  ? "O LiveKit recusou o token: confira se LIVEKIT_API_SECRET é o secret da mesma chave (LIVEKIT_API_KEY)."
+                  : error.message),
+            }
+          )
+        })()
       }}
       onMediaDeviceFailure={(failure, kind) => {
         if (

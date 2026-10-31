@@ -6,9 +6,11 @@ import {
   PaintBrushIcon,
   PencilSimpleIcon,
   PersonArmsSpreadIcon,
+  ShieldCheckIcon,
   SignOutIcon,
   UserIcon,
 } from "@phosphor-icons/react"
+import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 
 import { DiscordIcon } from "@/components/brand-icon"
@@ -17,6 +19,7 @@ import { useTheme } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { UserAvatar } from "@/components/user-avatar"
+import { useIsAppAdmin } from "@/features/admin/queries"
 import {
   isGuest,
   linkDiscord,
@@ -90,8 +93,12 @@ function UserSettings({
   initialTab: SettingsTab
   onOpenChange: (open: boolean) => void
 }) {
-  const [active, setActive] = useState<SettingsTab | "logout">(initialTab)
+  const [active, setActive] = useState<SettingsTab | "logout" | "admin">(
+    initialTab
+  )
   const guest = isGuest(useAuth().session)
+  const isAdmin = useIsAppAdmin()
+  const navigate = useNavigate()
 
   return (
     <SettingsLayout
@@ -144,6 +151,20 @@ function UserSettings({
                 label: "Configurações do Windows",
                 icon: <DesktopIcon />,
                 group: "Experiência",
+              },
+            ]
+          : []),
+        ...(isAdmin
+          ? [
+              {
+                key: "admin" as const,
+                label: "Painel do Biscord",
+                icon: <ShieldCheckIcon />,
+                group: "Administração",
+                onSelect: () => {
+                  onOpenChange(false)
+                  void navigate({ to: "/admin" })
+                },
               },
             ]
           : []),

@@ -22,6 +22,10 @@ import {
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import {
+  type StreamFrameRate,
+  useStreamOptions,
+} from "@/features/admin/queries"
+import {
   hasNativeStreamAudio,
   type NativeStreamAudio,
   startNativeStreamAudio,
@@ -210,7 +214,27 @@ function Choice<T extends string | number>({
 export function ScreenSharePopover({ children }: { children: ReactElement }) {
   const { localParticipant, isScreenShareEnabled } = useLocalParticipant()
   const [open, setOpen] = useState(false)
-  const [settings, setSettings] = useState(loadSettings)
+  const [saved, setSettings] = useState(loadSettings)
+  // the app owner decides which qualities exist (admin page); a saved choice
+  // that's no longer allowed falls back to the closest allowed one
+  const allowed = useStreamOptions()
+  const settings: StreamSettings = {
+    ...saved,
+    resolution: allowed.resolutions.includes(saved.resolution)
+      ? saved.resolution
+      : (allowed.resolutions.at(-1) ?? "720"),
+    frameRate: allowed.frameRates.includes(saved.frameRate)
+      ? saved.frameRate
+      : (allowed.frameRates.reduce<StreamFrameRate | null>(
+          (best, fps) =>
+            best === null ||
+            Math.abs(fps - saved.frameRate) < Math.abs(best - saved.frameRate)
+              ? fps
+              : best,
+          null
+        ) ?? 30),
+    audio: allowed.audio && saved.audio,
+  }
 
   const update = (patch: Partial<StreamSettings>) =>
     setSettings((prev) => {
@@ -361,7 +385,9 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
                 Resolução
               </span>
               <Choice
-                options={RESOLUTIONS.map((r) => r.key)}
+                options={RESOLUTIONS.map((r) => r.key).filter((key) =>
+                  allowed.resolutions.includes(key)
+                )}
                 value={settings.resolution}
                 onChange={(resolution) => update({ resolution })}
                 format={(key) => RESOLUTIONS.find((r) => r.key === key)!.label}
@@ -372,26 +398,30 @@ export function ScreenSharePopover({ children }: { children: ReactElement }) {
                 Taxa de quadros
               </span>
               <Choice
-                options={FRAME_RATES}
+                options={FRAME_RATES.filter((fps) =>
+                  allowed.frameRates.includes(fps)
+                )}
                 value={settings.frameRate}
                 onChange={(frameRate) => update({ frameRate })}
                 format={(fps) => `${fps} FPS`}
               />
             </div>
-            <label className="flex items-center justify-between gap-4 text-sm">
-              <span className="flex flex-col gap-1">
-                <span className="font-medium text-header">
-                  Transmitir áudio
+            {allowed.audio && (
+              <label className="flex items-center justify-between gap-4 text-sm">
+                <span className="flex flex-col gap-1">
+                  <span className="font-medium text-header">
+                    Transmitir áudio
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Envia o som da tela ou janela compartilhada.
+                  </span>
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  Envia o som da tela ou janela compartilhada.
-                </span>
-              </span>
-              <Switch
-                checked={settings.audio}
-                onCheckedChange={(audio) => update({ audio })}
-              />
-            </label>
+                <Switch
+                  checked={settings.audio}
+                  onCheckedChange={(audio) => update({ audio })}
+                />
+              </label>
+            )}
             {hasNativeStreamAudio && settings.audio && (
               <label className="flex items-center justify-between gap-4 text-sm">
                 <span className="flex flex-col gap-1">

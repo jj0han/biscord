@@ -22,4 +22,8 @@ export const queryKeys = {
     ["server", serverId, "member-roles"] as const,
   invites: (serverId: string) => ["server", serverId, "invites"] as const,
   invite: (code: string) => ["invite", code] as const,
+  appSettings: ["app-settings"] as const,
+  isAppAdmin: ["app-admin"] as const,
+  voiceUsage: (month: string) => ["voice-usage", month] as const,
+  voiceStatus: ["voice-status"] as const,
 }

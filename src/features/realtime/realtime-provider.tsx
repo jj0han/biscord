@@ -31,11 +31,17 @@ type Payload = RealtimePostgresChangesPayload<Row>
 
 const IDLE_AFTER_MS = 5 * 60 * 1000
 
+/** Old messages arriving from a Discord import, not live chat. */
+const isBackfill = (row: Message) =>
+  !!row.discord_id && Date.now() - Date.parse(row.created_at) > 2 * 60 * 1000
+
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const userId = useUserId()
   const qc = useQueryClient()
   const me = useQuery(profileQuery(userId)).data
   const presenceRef = useRef<RealtimeChannel | null>(null)
+  // re-sends our status; called again on every presence (re)join
+  const publishRef = useRef<(() => void) | null>(null)
   const statusRef = useRef(me?.status)
   useEffect(() => {
     statusRef.current = me?.status
@@ -45,6 +51,22 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   // Database changes
   // -------------------------------------------------------------------------
   useEffect(() => {
+    // imported history lands in bursts: refetch the channel once it settles
+    const refreshTimers = new Map<string, ReturnType<typeof setTimeout>>()
+    const refreshChannel = (channelId: string) => {
+      clearTimeout(refreshTimers.get(channelId))
+      refreshTimers.set(
+        channelId,
+        setTimeout(() => {
+          refreshTimers.delete(channelId)
+          void qc.invalidateQueries({
+            queryKey: queryKeys.channelMessages(channelId),
+          })
+          void qc.invalidateQueries({ queryKey: queryKeys.unread })
+        }, 2000)
+      )
+    }
+
     const onMessage = async (payload: Payload) => {
       if (payload.eventType === "DELETE") {
         removeMessageFromCache(qc, payload.old.id as string)
@@ -53,6 +75,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
       const row = payload.new as unknown as Message
       const existing = findMessageInCache(qc, row.id)
+      if (isBackfill(row) && !existing) {
+        refreshChannel(row.channel_id)
+        return
+      }
       let reply = existing?.reply ?? null
       if (!reply && row.reply_to_id) {
         const cached = findMessageInCache(qc, row.reply_to_id)
@@ -110,7 +136,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         } else {
           qc.invalidateQueries({ queryKey: queryKeys.unread })
         }
-        if (mentioned) {
+        if (mentioned && row.type === "default") {
           notifyMessage(qc, row, !!dm, statusRef.current)
         }
       }
@@ -209,6 +235,20 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "discord_links" },
+        (payload) => {
+          const row = (
+            payload.eventType === "DELETE" ? payload.old : payload.new
+          ) as Row
+          if (row.server_id) {
+            qc.invalidateQueries({
+              queryKey: queryKeys.discordLink(row.server_id as string),
+            })
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "channel_recipients" },
         () => qc.invalidateQueries({ queryKey: queryKeys.dms })
       )
@@ -235,6 +275,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       .subscribe()
 
     return () => {
+      for (const timer of refreshTimers.values()) clearTimeout(timer)
       void supabase.removeChannel(channel)
     }
   }, [qc, userId])
@@ -262,7 +303,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       presenceStore.set(next)
     }
 
-    channel.on("presence", { event: "sync" }, sync).subscribe()
+    channel.on("presence", { event: "sync" }, sync).subscribe((status) => {
+      // the server forgets tracked state when the channel rejoins
+      if (status === "SUBSCRIBED") publishRef.current?.()
+    })
     presenceRef.current = channel
 
     return () => {
@@ -280,6 +324,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     let timer: ReturnType<typeof setTimeout> | undefined
 
     const publish = () => {
+      if (channel.state !== "joined") return
       if (me.status === "invisible") {
         void channel.untrack()
         return
@@ -304,18 +349,14 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // presence may not be joined yet; track once it is
-    const attempt = setInterval(() => {
-      if (channel.state === "joined") {
-        clearInterval(attempt)
-        publish()
-      }
-    }, 250)
+    // if presence isn't joined yet, the subscribe callback publishes
+    publishRef.current = publish
+    publish()
 
     window.addEventListener("blur", onBlur)
     window.addEventListener("focus", onFocus)
     return () => {
-      clearInterval(attempt)
+      publishRef.current = null
       clearTimeout(timer)
       window.removeEventListener("blur", onBlur)
       window.removeEventListener("focus", onFocus)

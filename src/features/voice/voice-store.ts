@@ -56,12 +56,83 @@ export const voiceStatesStore = createStore<Record<string, VoiceState[]>>({})
 /** Presence channels by scope, owned by VoiceProvider. */
 export const voicePresenceChannels = new Map<string, RealtimeChannel>()
 
+/**
+ * What we announce in voice presence. Kept here so it can be sent again
+ * whenever a presence channel (re)joins: the server forgets tracked state on
+ * every rejoin (reconnect, token refresh), which used to leave people in a
+ * call while nobody else saw them in the list.
+ */
+let localVoiceState: { scope: string; state: VoiceState } | null = null
+
+export function setLocalVoiceState(
+  next: { scope: string; state: VoiceState } | null
+) {
+  const previous = localVoiceState
+  localVoiceState = next
+  if (previous && previous.scope !== next?.scope) {
+    void voicePresenceChannels.get(previous.scope)?.untrack()
+  }
+  if (next) retrackVoiceState(next.scope)
+}
+
+export function retrackVoiceState(scope: string) {
+  const channel = voicePresenceChannels.get(scope)
+  if (!localVoiceState || localVoiceState.scope !== scope || !channel) return
+  if (channel.state === "joined") void channel.track(localVoiceState.state)
+}
+
+/** True when the server-side presence of `scope` no longer has our entry. */
+export function voiceStateMissing(scope: string, userId: string) {
+  const channel = voicePresenceChannels.get(scope)
+  if (!localVoiceState || !channel || channel.state !== "joined") return false
+  const metas = channel.presenceState<VoiceState>()[userId] ?? []
+  return !metas.some((m) => m.channel_id === localVoiceState?.state.channel_id)
+}
+
+/**
+ * Who LiveKit says is in the room we're connected to. Inside our own call
+ * it's the source of truth: it sees joins and drops within seconds and can't
+ * miss someone whose presence got lost.
+ */
+export type RoomParticipant = {
+  user_id: string
+  muted: boolean
+  video: boolean
+  streaming: boolean
+  joined_at: string
+}
+
+export const roomParticipantsStore = createStore<{
+  scope: string
+  channelId: string
+  participants: RoomParticipant[]
+} | null>(null)
+
 const EMPTY: VoiceState[] = []
 
 export function useScopeVoiceStates(scope: string | null | undefined) {
-  return voiceStatesStore.useStore((state) =>
+  const states = voiceStatesStore.useStore((state) =>
     scope ? (state[scope] ?? EMPTY) : EMPTY
   )
+  const room = roomParticipantsStore.useStore((state) => state)
+  return useMemo(() => {
+    if (!room || room.scope !== scope) return states
+    const inRoom = new Map(room.participants.map((p) => [p.user_id, p]))
+    const roomChannel = room.channelId
+    // presence entries for our channel that LiveKit doesn't know are ghosts
+    const kept = states.filter(
+      (s) => s.channel_id !== roomChannel || inRoom.has(s.user_id)
+    )
+    const known = new Set(
+      kept.filter((s) => s.channel_id === roomChannel).map((s) => s.user_id)
+    )
+    const missing = room.participants
+      .filter((p) => !known.has(p.user_id))
+      .map((p) => ({ ...p, channel_id: roomChannel, deafened: false }))
+    return missing.length || kept.length !== states.length
+      ? [...kept, ...missing]
+      : states
+  }, [states, room, scope])
 }
 
 export function useChannelVoiceStates(

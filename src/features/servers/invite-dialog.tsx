@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
+import { Switch } from "@/components/ui/switch"
 import { createInvite, useServer } from "@/features/servers/queries"
 import { publicOrigin } from "@/lib/platform"
+import type { Channel } from "@/lib/types"
 
 const EXPIRY_OPTIONS = [
   { label: "30 minutos", seconds: 1800 },
@@ -24,27 +26,37 @@ const EXPIRY_OPTIONS = [
 
 type InviteDialogProps = {
   serverId: string
+  /** invite straight into this channel (voice: also as a temporary guest) */
+  channel?: Channel
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
 export function InviteDialog({
   serverId,
+  channel,
   open,
   onOpenChange,
 }: InviteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <AppDialogContent>
-        {open && <InviteContent serverId={serverId} />}
+        {open && <InviteContent serverId={serverId} channel={channel} />}
       </AppDialogContent>
     </Dialog>
   )
 }
 
-function InviteContent({ serverId }: { serverId: string }) {
+function InviteContent({
+  serverId,
+  channel,
+}: {
+  serverId: string
+  channel?: Channel
+}) {
   const server = useServer(serverId)
   const [expiry, setExpiry] = useState(604800)
+  const [temporary, setTemporary] = useState(false)
   const [code, setCode] = useState<string | null>(null)
   const [error, setError] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -53,13 +65,16 @@ function InviteContent({ serverId }: { serverId: string }) {
     let cancelled = false
     setCode(null)
     setError(false)
-    createInvite(serverId, expiry)
+    createInvite(serverId, expiry, {
+      channelId: channel?.id,
+      temporary: temporary && channel?.type === "voice",
+    })
       .then((next) => !cancelled && setCode(next))
       .catch(() => !cancelled && setError(true))
     return () => {
       cancelled = true
     }
-  }, [serverId, expiry])
+  }, [serverId, expiry, channel?.id, channel?.type, temporary])
 
   const link = code ? `${publicOrigin}/invite/${code}` : ""
 
@@ -78,7 +93,9 @@ function InviteContent({ serverId }: { serverId: string }) {
         <DialogDescription>
           {error
             ? "Você não tem permissão para criar convites neste servidor."
-            : "Envie este link para um amigo entrar no servidor."}
+            : temporary
+              ? `Quem abrir o link entra só em ${channel?.name} e sai do servidor ao deixar a chamada.`
+              : "Envie este link para um amigo entrar no servidor."}
         </DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-2">
@@ -108,6 +125,21 @@ function InviteContent({ serverId }: { serverId: string }) {
           ))}
         </NativeSelect>
       </div>
+      {channel?.type === "voice" && (
+        <label className="flex items-center justify-between gap-4">
+          <span className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-header">
+              Convite de convidado temporário
+            </span>
+            <span className="text-xs text-muted-foreground">
+              A pessoa entra só neste canal de voz, sem virar membro do
+              servidor, e é removida quando sai da chamada (a não ser que você
+              dê um cargo para ela).
+            </span>
+          </span>
+          <Switch checked={temporary} onCheckedChange={setTemporary} />
+        </label>
+      )}
     </>
   )
 }

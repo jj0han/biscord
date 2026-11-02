@@ -177,6 +177,17 @@ export function signOut() {
   return supabase.auth.signOut()
 }
 
+/**
+ * A guest can never get back into the account after signing out, so leaving
+ * deletes it, with everything it posted and every server it was in.
+ */
+export async function leaveAsGuest() {
+  const { error } = await supabase.rpc("delete_guest_account")
+  if (error) throw error
+  // the user no longer exists: just drop the local session
+  await supabase.auth.signOut({ scope: "local" })
+}
+
 /** A guest account: real profile and data, no Discord until linked later. */
 export function signInAsGuest(name: string) {
   return supabase.auth.signInAnonymously({

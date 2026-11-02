@@ -22,6 +22,8 @@ type Row = {
   nickname: string | null
   color: number
   owner: boolean
+  /** temporary voice guest, or an account without Discord */
+  guest: boolean
 }
 
 function MemberRow({
@@ -70,6 +72,11 @@ function MemberRow({
                   />
                 )}
                 {row.owner && <span className="ml-1 text-warning">♛</span>}
+                {row.guest && (
+                  <span className="ml-1 rounded-sm bg-card px-1 align-middle text-[10px] font-semibold text-muted-foreground uppercase">
+                    Convidado
+                  </span>
+                )}
               </span>
               {row.profile.custom_status && !offline && (
                 <span className="truncate text-xs text-muted-foreground">
@@ -146,6 +153,7 @@ export function MemberList({
         nickname: member.nickname,
         color: memberRoles.find((r) => r.color)?.color ?? 0,
         owner: member.user_id === server?.owner_id,
+        guest: !!member.guest_channel_id || !member.profile.discord_id,
       }
 
       const isOnline = (presence[member.user_id] ?? "offline") !== "offline"
@@ -208,6 +216,7 @@ export function RecipientList({ recipients }: { recipients: Profile[] }) {
     nickname: null,
     color: 0,
     owner: false,
+    guest: false,
   }))
   return (
     <aside className="flex w-66 shrink-0 scrollbar-thin flex-col overflow-y-auto border-l border-border bg-sidebar px-2 pb-4">

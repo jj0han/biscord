@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { UserAvatar } from "@/components/user-avatar"
+import { DiscordImportBanner } from "@/features/discord/import-banner"
 import { SidebarShell } from "@/features/layout/sidebar-shell"
 import { markRead, unreadQuery } from "@/features/messages/queries"
 import { useChannelUnread } from "@/features/messages/unread"
@@ -479,7 +480,9 @@ function ChannelRow({
             </ContextMenuItem>
           )}
           <ContextMenuItem onClick={() => setDialog("invite")}>
-            Convidar para o servidor
+            {channel.type === "voice"
+              ? "Convidar para o canal de voz"
+              : "Convidar para o servidor"}
           </ContextMenuItem>
           {can(Permission.ManageChannels) && (
             <>
@@ -500,6 +503,7 @@ function ChannelRow({
       {channel.type === "voice" && <VoiceUsers channel={channel} />}
       <InviteDialog
         serverId={serverId}
+        channel={channel}
         open={dialog === "invite"}
         onOpenChange={(o) => setDialog(o ? "invite" : null)}
       />
@@ -696,6 +700,7 @@ export function ChannelSidebar({ serverId }: { serverId: string }) {
             void drop({ kind: "end" })
           }}
         >
+          <DiscordImportBanner serverId={serverId} />
           <div className="flex flex-col gap-0.5">
             {layout.loose.map((channel) => (
               <ChannelRow

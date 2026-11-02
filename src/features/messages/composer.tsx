@@ -125,7 +125,13 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(
       )
       const last = data?.pages
         .flat()
-        .find((m) => m.author_id === userId && !m.pending)
+        .find(
+          (m) =>
+            m.author_id === userId &&
+            !m.pending &&
+            m.type === "default" &&
+            !m.imported_author
+        )
       if (last) chat.setEditingId(last.id)
     }
 

@@ -63,7 +63,7 @@ import {
 import { Markdown } from "@/lib/markdown/markdown"
 import { roleColor } from "@/lib/permissions"
 import { queryKeys } from "@/lib/query-keys"
-import type { Message } from "@/lib/types"
+import type { ImportedAuthor, Message } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 function AuthorName({
@@ -93,6 +93,18 @@ function AuthorName({
         )}
       </button>
     </ProfilePopover>
+  )
+}
+
+/** Someone from the imported Discord server who isn't on Biscord. */
+function ImportedName({ author }: { author: ImportedAuthor }) {
+  return (
+    <span className="flex items-baseline gap-1">
+      <span className="font-medium text-header">{author.name}</span>
+      <span className="rounded-sm bg-[#5865f2] px-1 text-[10px] leading-4 font-semibold text-white uppercase">
+        {author.bot ? "Bot" : "Discord"}
+      </span>
+    </span>
   )
 }
 
@@ -258,7 +270,8 @@ export const MessageItem = memo(function MessageItem({
   const author = useProfile(message.author_id)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const mine = message.author_id === userId
+  const imported = message.imported_author
+  const mine = message.author_id === userId && !imported
   const editing = chat.editingId === message.id
   const mentioned =
     message.mentions.includes(userId) ||
@@ -324,26 +337,43 @@ export const MessageItem = memo(function MessageItem({
 
           {showHead && !compact ? (
             <>
-              <ProfilePopover
-                userId={message.author_id}
-                serverId={chat.serverId}
-              >
-                <button
-                  type="button"
+              {imported ? (
+                <img
+                  src={imported.avatar_url}
+                  alt=""
                   className={cn(
-                    "absolute left-4 mt-px rounded-full",
+                    "absolute left-4 mt-px size-10 rounded-full",
                     message.reply_to_id ? "top-7" : "top-1"
                   )}
-                >
-                  <UserAvatar profile={author ?? null} size="lg" still />
-                </button>
-              </ProfilePopover>
-              <div className="mb-0.5 flex items-baseline gap-2 leading-[1.375]">
-                <AuthorName
+                />
+              ) : (
+                <ProfilePopover
                   userId={message.author_id}
                   serverId={chat.serverId}
-                />
-                {author && <GuildTag profile={author} />}
+                >
+                  <button
+                    type="button"
+                    className={cn(
+                      "absolute left-4 mt-px rounded-full",
+                      message.reply_to_id ? "top-7" : "top-1"
+                    )}
+                  >
+                    <UserAvatar profile={author ?? null} size="lg" still />
+                  </button>
+                </ProfilePopover>
+              )}
+              <div className="mb-0.5 flex items-baseline gap-2 leading-[1.375]">
+                {imported ? (
+                  <ImportedName author={imported} />
+                ) : (
+                  <>
+                    <AuthorName
+                      userId={message.author_id}
+                      serverId={chat.serverId}
+                    />
+                    {author && <GuildTag profile={author} />}
+                  </>
+                )}
                 <Tooltip>
                   <TooltipTrigger
                     render={<time className="text-xs text-muted-foreground" />}
@@ -372,11 +402,17 @@ export const MessageItem = memo(function MessageItem({
           >
             {compact && showHead && (
               <span className="flex shrink-0 items-baseline gap-1">
-                <AuthorName
-                  userId={message.author_id}
-                  serverId={chat.serverId}
-                />
-                {author && <GuildTag profile={author} />}
+                {imported ? (
+                  <ImportedName author={imported} />
+                ) : (
+                  <>
+                    <AuthorName
+                      userId={message.author_id}
+                      serverId={chat.serverId}
+                    />
+                    {author && <GuildTag profile={author} />}
+                  </>
+                )}
               </span>
             )}
             {editing ? (
@@ -590,7 +626,7 @@ export const MessageItem = memo(function MessageItem({
               <UserAvatar profile={author ?? null} size="lg" still />
               <div className="flex min-w-0 flex-col">
                 <span className="text-sm font-medium text-header">
-                  {displayName(author)}
+                  {imported?.name ?? displayName(author)}
                 </span>
                 <span className="line-clamp-3 text-sm">{message.content}</span>
               </div>

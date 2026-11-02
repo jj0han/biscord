@@ -44,6 +44,10 @@ export type Server = {
   icon_url: string | null
   owner_id: string
   created_at: string
+  /** where "X entrou no servidor" messages go */
+  system_channel_id: string | null
+  /** accounts without Discord linked may join */
+  allow_guests: boolean
 }
 
 export type ServerMember = {
@@ -51,7 +55,21 @@ export type ServerMember = {
   user_id: string
   nickname: string | null
   joined_at: string
+  /** temporary guest limited to this voice channel */
+  guest_channel_id: string | null
   profile: Profile
+}
+
+export type DiscordLink = {
+  server_id: string
+  guild_id: string
+  imported_by: string | null
+  sync: boolean
+  history_limit: number
+  backfill_done: boolean
+  last_synced_at: string | null
+  last_error: string | null
+  created_at: string
 }
 
 export type Role = {
@@ -130,10 +148,23 @@ export type MessageReply = {
   attachments: Attachment[]
 }
 
+export type MessageType = "default" | "member_join"
+
+/** Author of a message imported from Discord who isn't on Biscord. */
+export type ImportedAuthor = {
+  discord_id: string
+  name: string
+  avatar_url: string
+  bot?: boolean
+}
+
 export type Message = {
   id: string
   channel_id: string
   author_id: string
+  type: MessageType
+  imported_author: ImportedAuthor | null
+  discord_id: string | null
   content: string
   reply_to_id: string | null
   attachments: Attachment[]
@@ -167,6 +198,8 @@ export type Invite = {
   uses: number
   expires_at: string | null
   created_at: string
+  channel_id: string | null
+  temporary: boolean
 }
 
 export type InvitePreview = {
@@ -177,6 +210,12 @@ export type InvitePreview = {
   member_count: number
   inviter_name: string
   is_member: boolean
+  channel_id: string | null
+  channel_name: string | null
+  channel_type: ChannelType | null
+  /** voice guest invite: only that channel, until leaving the call */
+  temporary: boolean
+  allow_guests: boolean
 }
 
 export type UnreadState = {

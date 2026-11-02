@@ -21,6 +21,9 @@ export const queryKeys = {
   memberRoles: (serverId: string | null) =>
     ["server", serverId, "member-roles"] as const,
   invites: (serverId: string) => ["server", serverId, "invites"] as const,
+  discordLink: (serverId: string) =>
+    ["server", serverId, "discord-link"] as const,
+  discordGuilds: ["discord-guilds"] as const,
   invite: (code: string) => ["invite", code] as const,
   appSettings: ["app-settings"] as const,
   isAppAdmin: ["app-admin"] as const,

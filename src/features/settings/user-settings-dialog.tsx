@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react"
 import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { DiscordIcon } from "@/components/brand-icon"
 import { SettingsLabel, SettingsLayout } from "@/components/settings-layout"
@@ -22,6 +23,7 @@ import { UserAvatar } from "@/components/user-avatar"
 import { useIsAppAdmin } from "@/features/admin/queries"
 import {
   isGuest,
+  leaveAsGuest,
   linkDiscord,
   signOut,
   useAuth,
@@ -174,16 +176,21 @@ function UserSettings({
           icon: <SignOutIcon />,
           destructive: true,
           onSelect: () => {
+            if (!guest) {
+              void signOut()
+              return
+            }
             // a guest without Discord can't sign back into the same account
             if (
-              guest &&
               !window.confirm(
-                "Você está como convidado. Ao sair, não será possível voltar a esta conta. Vincule o Discord antes para manter seus dados. Sair mesmo assim?"
+                "Você está como convidado. Ao sair, sua conta é apagada, junto com suas mensagens e servidores. Vincule o Discord antes para manter seus dados. Sair mesmo assim?"
               )
             ) {
               return
             }
-            void signOut()
+            void leaveAsGuest().catch(() =>
+              toast.error("Não foi possível apagar a conta de convidado.")
+            )
           },
         },
       ]}
@@ -258,7 +265,8 @@ function AccountSection() {
             Vincular conta do Discord
           </Button>
           <p className="text-xs text-warning">
-            Enquanto for convidado, sair da conta apaga o acesso a ela.
+            Enquanto for convidado, sair do Biscord apaga esta conta e tudo que
+            você enviou.
           </p>
         </div>
       ) : (

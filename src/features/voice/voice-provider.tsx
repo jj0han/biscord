@@ -4,10 +4,11 @@ import {
   useAudioPlayback,
   useConnectionState,
   useLocalParticipant,
+  useParticipants,
   useRemoteParticipants,
   useRoomContext,
 } from "@livekit/components-react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AudioPresets,
   ConnectionState,
@@ -22,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { useUserId } from "@/features/auth/auth-provider"
-import { serversQuery } from "@/features/servers/queries"
+import { leaveGuestMemberships, serversQuery } from "@/features/servers/queries"
 import {
   type AudioSettings,
   audioSettingsStore,
@@ -42,57 +43,142 @@ import {
   DM_SCOPE,
   joinVoice,
   leaveVoice,
+  retrackVoiceState,
+  roomParticipantsStore,
+  setLocalVoiceState,
   useVoice,
   type VoiceConnection,
   voicePresenceChannels,
+  voiceStateMissing,
   voiceStatesStore,
   voiceStore,
 } from "@/features/voice/voice-store"
 import { useSubscriptions } from "@/features/voice/watching"
+import { queryKeys } from "@/lib/query-keys"
 import { playSound } from "@/lib/sounds"
 import { supabase } from "@/lib/supabase"
 import type { VoiceState } from "@/lib/types"
 
-/** Subscribes to voice presence for every server the user belongs to. */
+/**
+ * Subscribes to voice presence for every server the user belongs to. Only
+ * scopes that were added or removed are touched, so joining or leaving a
+ * server never drops (and wipes) the presence of every other one.
+ */
 function useVoicePresence(scopes: string[]) {
   const userId = useUserId()
   const key = scopes.join(",")
 
   useEffect(() => {
-    const list = key ? key.split(",") : []
-    const channels = list.map((scope) => {
+    const wanted = new Set(key ? key.split(",") : [])
+    for (const [scope, channel] of voicePresenceChannels) {
+      if (wanted.has(scope)) continue
+      voicePresenceChannels.delete(scope)
+      void supabase.removeChannel(channel)
+      voiceStatesStore.set((prev) => {
+        const next = { ...prev }
+        delete next[scope]
+        return next
+      })
+    }
+    for (const scope of wanted) {
+      if (voicePresenceChannels.has(scope)) continue
       const channel = supabase.channel(`voice:${scope}`, {
         config: { presence: { key: userId } },
       })
       channel
         .on("presence", { event: "sync" }, () => {
           const state = channel.presenceState<VoiceState>()
-          const entries = Object.values(state).flatMap((metas) =>
-            metas.slice(0, 1).map((meta) => ({
-              user_id: meta.user_id,
-              channel_id: meta.channel_id,
-              muted: meta.muted,
-              deafened: meta.deafened,
-              video: meta.video,
-              streaming: meta.streaming,
-              joined_at: meta.joined_at,
-            }))
-          )
+          const entries = Object.values(state).flatMap((metas) => {
+            if (metas.length === 0) return []
+            // a stale entry from another device may linger: newest wins
+            const meta = metas.reduce((a, b) =>
+              b.joined_at > a.joined_at ? b : a
+            )
+            return [
+              {
+                user_id: meta.user_id,
+                channel_id: meta.channel_id,
+                muted: meta.muted,
+                deafened: meta.deafened,
+                video: meta.video,
+                streaming: meta.streaming,
+                joined_at: meta.joined_at,
+              },
+            ]
+          })
           voiceStatesStore.set((prev) => ({ ...prev, [scope]: entries }))
         })
-        .subscribe()
+        .subscribe((status) => {
+          // every (re)join starts without our entry on the server
+          if (status === "SUBSCRIBED") retrackVoiceState(scope)
+        })
       voicePresenceChannels.set(scope, channel)
-      return [scope, channel] as const
-    })
-
-    return () => {
-      for (const [scope, channel] of channels) {
-        voicePresenceChannels.delete(scope)
-        void supabase.removeChannel(channel)
-      }
-      voiceStatesStore.set({})
     }
   }, [key, userId])
+
+  useEffect(
+    () => () => {
+      for (const channel of voicePresenceChannels.values()) {
+        void supabase.removeChannel(channel)
+      }
+      voicePresenceChannels.clear()
+      voiceStatesStore.set({})
+    },
+    [userId]
+  )
+}
+
+/**
+ * Temporary voice guests stop being in the server when they leave the call,
+ * like Discord's guest invites (and when the app starts, outside any call).
+ */
+function useGuestMembershipCleanup(connection: VoiceConnection | null) {
+  const userId = useUserId()
+  const qc = useQueryClient()
+  const previous = useRef<VoiceConnection | null>(null)
+
+  useEffect(() => {
+    void leaveGuestMemberships(userId).then((left) => {
+      if (left) void qc.invalidateQueries({ queryKey: queryKeys.servers })
+    })
+  }, [userId, qc])
+
+  useEffect(() => {
+    const left = previous.current
+    previous.current = connection
+    if (!left || left.scope === DM_SCOPE) return
+    if (connection?.channelId === left.channelId) return
+    void leaveGuestMemberships(userId, {
+      serverId: left.scope,
+      channelId: left.channelId,
+    }).then((removed) => {
+      if (removed) void qc.invalidateQueries({ queryKey: queryKeys.servers })
+    })
+  }, [connection, userId, qc])
+}
+
+/** Publishes who LiveKit has in our room (see roomParticipantsStore). */
+function useRoomParticipants(connected: boolean, scope: string | undefined) {
+  const room = useRoomContext()
+  const participants = useParticipants()
+  useEffect(() => {
+    if (!connected || !scope) {
+      roomParticipantsStore.set(null)
+      return
+    }
+    roomParticipantsStore.set({
+      scope,
+      channelId: room.name,
+      participants: participants.map((p) => ({
+        user_id: p.identity,
+        muted: !p.isMicrophoneEnabled,
+        video: p.isCameraEnabled,
+        streaming: p.isScreenShareEnabled,
+        joined_at: (p.joinedAt ?? new Date()).toISOString(),
+      })),
+    })
+  }, [connected, scope, room, participants])
+  useEffect(() => () => roomParticipantsStore.set(null), [])
 }
 
 /** Plays Discord-like sounds when people join, leave or go live in our call. */
@@ -330,31 +416,22 @@ function VoiceBridge() {
       .catch(() => undefined)
   }, [connected, localParticipant, micEnabled])
 
+  useRoomParticipants(connected, connection?.scope)
+
   useEffect(() => {
     if (!connected || !connection) return
-    const channel = voicePresenceChannels.get(connection.scope)
-    if (!channel) return
-
-    const payload: VoiceState = {
-      user_id: userId,
-      channel_id: connection.channelId,
-      muted: !micEnabled,
-      deafened,
-      video: isCameraEnabled,
-      streaming: isScreenShareEnabled,
-      joined_at: connection.joinedAt,
-    }
-
-    const attempt = setInterval(() => {
-      if (channel.state === "joined") {
-        clearInterval(attempt)
-        void channel.track(payload)
-      }
-    }, 200)
-
-    return () => {
-      clearInterval(attempt)
-    }
+    setLocalVoiceState({
+      scope: connection.scope,
+      state: {
+        user_id: userId,
+        channel_id: connection.channelId,
+        muted: !micEnabled,
+        deafened,
+        video: isCameraEnabled,
+        streaming: isScreenShareEnabled,
+        joined_at: connection.joinedAt,
+      },
+    })
   }, [
     connected,
     connection,
@@ -368,11 +445,20 @@ function VoiceBridge() {
   // leaving (or failing to stay in) the room clears our presence entry
   useEffect(() => {
     if (!connected || !connection) return
-    const channel = voicePresenceChannels.get(connection.scope)
+    const scope = connection.scope
+    // belt and braces: if the server lost our entry anyway, announce again
+    const heal = setInterval(() => {
+      if (voiceStateMissing(scope, userId)) retrackVoiceState(scope)
+    }, 10000)
+    const onHide = () => setLocalVoiceState(null)
+    window.addEventListener("pagehide", onHide)
     return () => {
-      void channel?.untrack()
+      clearInterval(heal)
+      window.removeEventListener("pagehide", onHide)
+      setLocalVoiceState(null)
+      void voicePresenceChannels.get(scope)?.untrack()
     }
-  }, [connected, connection])
+  }, [connected, connection, userId])
 
   return (
     <>
@@ -480,6 +566,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     [servers]
   )
   useVoicePresence(scopes)
+  useGuestMembershipCleanup(connection)
 
   return (
     <LiveKitRoom

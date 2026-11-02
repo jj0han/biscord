@@ -1,14 +1,17 @@
+import { SpeakerHighIcon } from "@phosphor-icons/react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
+import { DiscordIcon } from "@/components/brand-icon"
 import { ServerIcon } from "@/components/server-icon"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/features/auth/auth-provider"
+import { isGuest, linkDiscord, useAuth } from "@/features/auth/auth-provider"
 import { SplashScreen } from "@/features/layout/splash-screen"
 import { acceptInvite, invitePreviewQuery } from "@/features/servers/queries"
+import { joinVoice } from "@/features/voice/voice-store"
 import { isDesktop } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
 
@@ -67,22 +70,41 @@ function Invite() {
 function InviteCard({ code }: { code: string }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const guest = isGuest(useAuth().session)
   const [joining, setJoining] = useState(false)
+  const [refused, setRefused] = useState(false)
 
   const { data: invite, isPending } = useQuery(invitePreviewQuery(code))
+  const blocked = !!invite && guest && (!invite.allow_guests || refused)
 
   const join = async () => {
     if (!invite) return
     setJoining(true)
     try {
-      const serverId = invite.is_member
-        ? invite.server_id
-        : await acceptInvite(code)
+      const serverId =
+        invite.is_member && !invite.temporary
+          ? invite.server_id
+          : await acceptInvite(code)
       await qc.invalidateQueries({ queryKey: queryKeys.servers })
-      navigate({ to: "/channels/$serverId", params: { serverId } })
-    } catch {
-      toast.error("Não foi possível entrar no servidor.")
+      const channelId = invite.channel_id
+      if (channelId) {
+        if (invite.channel_type === "voice") {
+          void joinVoice(channelId, serverId)
+        }
+        navigate({
+          to: "/channels/$serverId/$channelId",
+          params: { serverId, channelId },
+        })
+      } else {
+        navigate({ to: "/channels/$serverId", params: { serverId } })
+      }
+    } catch (error) {
       setJoining(false)
+      if ((error as { hint?: string }).hint === "guests_not_allowed") {
+        setRefused(true)
+        return
+      }
+      toast.error("Não foi possível entrar no servidor.")
     }
   }
 
@@ -100,26 +122,64 @@ function InviteCard({ code }: { code: string }) {
             />
             <div className="flex flex-col gap-1">
               <p className="text-sm text-muted-foreground">
-                {invite.inviter_name} convidou você para entrar em
+                {invite.inviter_name}{" "}
+                {invite.temporary
+                  ? "convidou você como convidado para uma chamada em"
+                  : "convidou você para entrar em"}
               </p>
               <h1 className="text-2xl font-semibold tracking-tight text-header">
                 {invite.server_name}
               </h1>
+              {invite.channel_type === "voice" && (
+                <p className="flex items-center justify-center gap-1 font-medium text-header">
+                  <SpeakerHighIcon weight="fill" className="size-4" />
+                  {invite.channel_name}
+                </p>
+              )}
               <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <span className="size-2 rounded-full bg-status-offline" />
                 {invite.member_count}{" "}
                 {invite.member_count === 1 ? "membro" : "membros"}
               </p>
             </div>
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={join}
-              disabled={joining}
-            >
-              {joining && <Spinner />}
-              {invite.is_member ? "Abrir servidor" : "Aceitar convite"}
-            </Button>
+            {blocked ? (
+              <div className="flex w-full flex-col gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Este servidor só aceita quem tem uma conta do Discord
+                  vinculada. Vincule a sua para entrar.
+                </p>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => void linkDiscord(`/invite/${code}`)}
+                >
+                  <DiscordIcon />
+                  Vincular conta do Discord
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={join}
+                  disabled={joining}
+                >
+                  {joining && <Spinner />}
+                  {invite.temporary
+                    ? "Entrar na chamada"
+                    : invite.is_member
+                      ? "Abrir servidor"
+                      : "Aceitar convite"}
+                </Button>
+                {invite.temporary && !invite.is_member && (
+                  <p className="text-xs text-muted-foreground">
+                    Você só vê este canal de voz e sai do servidor quando deixar
+                    a chamada.
+                  </p>
+                )}
+              </>
+            )}
           </>
         ) : (
           <>

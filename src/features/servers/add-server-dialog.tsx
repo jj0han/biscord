@@ -5,6 +5,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 
 import { AppDialogContent } from "@/components/app-dialog"
+import { DiscordIcon } from "@/components/brand-icon"
 import { ImagePicker } from "@/components/image-picker"
 import { Spinner } from "@/components/spinner"
 import { Button } from "@/components/ui/button"
@@ -18,13 +19,14 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { useUserId } from "@/features/auth/auth-provider"
+import { DiscordImportStep } from "@/features/discord/import-step"
 import { useProfile } from "@/features/profiles/queries"
 import { createServer, uploadFile } from "@/features/servers/queries"
 import { displayName } from "@/lib/format"
 import { publicOrigin } from "@/lib/platform"
 import { queryKeys } from "@/lib/query-keys"
 
-type Step = "choose" | "create" | "join"
+type Step = "choose" | "create" | "join" | "discord"
 
 type AddServerDialogProps = {
   open: boolean
@@ -55,6 +57,12 @@ export function AddServerDialog({ open, onOpenChange }: AddServerDialogProps) {
             onDone={() => change(false)}
           />
         )}
+        {step === "discord" && (
+          <DiscordImportStep
+            onBack={() => setStep("choose")}
+            onDone={() => change(false)}
+          />
+        )}
       </AppDialogContent>
     </Dialog>
   )
@@ -79,6 +87,17 @@ function ChooseStep({ onPick }: { onPick: (step: Step) => void }) {
       >
         <img src="/biscord.svg" alt="" className="size-10" />
         <span className="flex-1">Criar o meu</span>
+        <CaretRightIcon className="size-5 text-interactive" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onPick("discord")}
+        className="-mt-3 flex items-center gap-3 rounded-lg border border-border p-3 text-left font-semibold text-header transition-colors hover:bg-hover"
+      >
+        <span className="flex size-10 items-center justify-center rounded-full bg-[#5865f2] text-white">
+          <DiscordIcon className="size-6" />
+        </span>
+        <span className="flex-1">Importar do Discord</span>
         <CaretRightIcon className="size-5 text-interactive" />
       </button>
       <div className="flex flex-col items-center gap-2">

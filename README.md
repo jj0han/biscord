@@ -22,7 +22,13 @@ live in Biscord itself.
 
 ## Features
 
-- Servers: create, icon, invites (expiring links), leave, kick, ban, delete
+- Servers: create, icon, invites (expiring links), leave, kick, ban, delete,
+  system channel with "X entrou no servidor" messages
+- Guests: accounts without Discord only join servers that allow them (off for
+  new servers) and are deleted when they leave Biscord; voice channel guest
+  invites give access to just that call, removed on hang-up
+- Import a Discord server (channels, roles, members on Biscord, history) and
+  optionally keep it in sync, Discord → Biscord
 - Channels: text / voice / categories, topics, collapse, unread dots and mention badges
 - Roles: colors, hoisting, Discord-compatible permission bits, enforced in SQL
 - Messages: Discord markdown (bold, italics, underline, strike, spoilers, code
@@ -80,9 +86,13 @@ redirect allow-list. The same code still runs as a regular website.
 - **Supabase**: create a project, `supabase link`, `supabase db push`,
   `supabase functions deploy`, `supabase secrets set --env-file supabase/functions/.env`
   (`LIVEKIT_URL`, `LIVEKIT_API_KEY` — starts with `API` —, `LIVEKIT_API_SECRET`,
-  `GIPHY_API_KEY`).
+  `GIPHY_API_KEY`, `DISCORD_BOT_TOKEN`).
   Enable the Discord provider in Auth → Providers and add your site URL to the
   redirect allow-list.
+- **Discord import**: in the same Discord application, open *Bot*, copy the
+  token into `DISCORD_BOT_TOKEN` and turn on the *Server Members* and
+  *Message Content* intents. Deploy `discord-import` with `--no-verify-jwt`
+  (pg_cron calls it every 2 minutes with its own secret from Vault).
 - **Frontend**: any static host (Vercel works out of the box). Set
   `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, and rewrite all
   paths to `index.html`.

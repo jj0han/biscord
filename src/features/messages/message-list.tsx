@@ -5,10 +5,15 @@ import { Spinner } from "@/components/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { MessageItem } from "@/features/messages/message-item"
 import { messagesQuery } from "@/features/messages/queries"
+import { SystemMessage } from "@/features/messages/system-message"
 import { formatDayDivider, isSameDayAs, minutesBetween } from "@/lib/format"
 import type { Message } from "@/lib/types"
 
 const GROUP_WINDOW_MINUTES = 7
+
+/** Imported Discord authors share the importer's id: tell them apart. */
+const authorKey = (message: Message) =>
+  message.imported_author?.discord_id ?? message.author_id
 
 function DayDivider({ date }: { date: string }) {
   return (
@@ -110,7 +115,8 @@ export function MessageList({
                 !prev || !isSameDayAs(prev.created_at, message.created_at)
               const head =
                 newDay ||
-                prev.author_id !== message.author_id ||
+                prev.type !== "default" ||
+                authorKey(prev) !== authorKey(message) ||
                 minutesBetween(prev.created_at, message.created_at) >
                   GROUP_WINDOW_MINUTES ||
                 message.id === firstUnreadId
@@ -120,7 +126,11 @@ export function MessageList({
                   {message.id === firstUnreadId && !newDay && (
                     <NewMessagesDivider />
                   )}
-                  <MessageItem message={message} head={head} />
+                  {message.type === "member_join" ? (
+                    <SystemMessage message={message} />
+                  ) : (
+                    <MessageItem message={message} head={head} />
+                  )}
                 </div>
               )
             })}

@@ -1,6 +1,8 @@
-import { PlusIcon, TrashIcon } from "@phosphor-icons/react"
+import { ArrowClockwiseIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
+import { formatDistanceToNow } from "date-fns"
+import { ptBR } from "date-fns/locale"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
@@ -10,6 +12,7 @@ import {
   SettingsLayout,
   type SettingsSection,
 } from "@/components/settings-layout"
+import { Spinner } from "@/components/spinner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,21 +26,30 @@ import {
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Switch } from "@/components/ui/switch"
 import { UnsavedBar } from "@/components/unsaved-bar"
 import { UserAvatar } from "@/components/user-avatar"
 import { useUserId } from "@/features/auth/auth-provider"
 import {
+  importProgressStore,
+  setDiscordSync,
+  syncDiscordNow,
+  unlinkDiscord,
+} from "@/features/discord/queries"
+import {
   banMember,
   createRole,
   deleteRole,
   deleteServer,
+  discordLinkQuery,
   invitesQuery,
   removeMember,
   setMemberRole,
   updateRole,
   updateServer,
   uploadFile,
+  useChannels,
   useMemberRoleAssignments,
   useMembers,
   usePermissions,
@@ -56,7 +68,13 @@ import { supabase, unwrap } from "@/lib/supabase"
 import type { Role } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-type Section = "overview" | "roles" | "members" | "invites" | "delete"
+type Section =
+  | "overview"
+  | "roles"
+  | "members"
+  | "invites"
+  | "discord"
+  | "delete"
 
 type ServerSettingsDialogProps = {
   serverId: string
@@ -82,6 +100,7 @@ function ServerSettings({
 }) {
   const server = useServer(serverId)
   const { can, isOwner } = usePermissions(serverId)
+  const { data: discordLink } = useQuery(discordLinkQuery(serverId))
   const [active, setActive] = useState<Section>("overview")
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -92,6 +111,9 @@ function ServerSettings({
       : []),
     { key: "members", label: "Membros", group: "Gerenciamento de membros" },
     { key: "invites", label: "Convites", group: "Gerenciamento de membros" },
+    ...(discordLink && can(Permission.Administrator)
+      ? [{ key: "discord" as const, label: "Discord", group: "Integrações" }]
+      : []),
     ...(isOwner
       ? [
           {
@@ -117,6 +139,7 @@ function ServerSettings({
         {active === "roles" && <RolesSection serverId={serverId} />}
         {active === "members" && <MembersSection serverId={serverId} />}
         {active === "invites" && <InvitesSection serverId={serverId} />}
+        {active === "discord" && <DiscordSyncSection serverId={serverId} />}
       </SettingsLayout>
       <DeleteServerDialog
         serverId={serverId}
@@ -134,13 +157,31 @@ function OverviewSection({ serverId }: { serverId: string }) {
   const userId = useUserId()
   const qc = useQueryClient()
   const server = useServer(serverId)
+  const channels = useChannels(serverId)
   const { can } = usePermissions(serverId)
   const [name, setName] = useState(server?.name ?? "")
   const [icon, setIcon] = useState<File | null>(null)
+  const [systemChannel, setSystemChannel] = useState(
+    server?.system_channel_id ?? ""
+  )
+  const [allowGuests, setAllowGuests] = useState(server?.allow_guests ?? false)
   const [saving, setSaving] = useState(false)
 
   const editable = can(Permission.ManageServer)
-  const dirty = !!server && (name !== server.name || icon !== null)
+  const textChannels = (channels ?? []).filter((c) => c.type === "text")
+  const dirty =
+    !!server &&
+    (name !== server.name ||
+      icon !== null ||
+      systemChannel !== (server.system_channel_id ?? "") ||
+      allowGuests !== server.allow_guests)
+
+  const reset = () => {
+    setName(server?.name ?? "")
+    setIcon(null)
+    setSystemChannel(server?.system_channel_id ?? "")
+    setAllowGuests(server?.allow_guests ?? false)
+  }
 
   const save = async () => {
     setSaving(true)
@@ -148,6 +189,8 @@ function OverviewSection({ serverId }: { serverId: string }) {
       const iconUrl = icon ? await uploadFile("icons", userId, icon) : undefined
       await updateServer(serverId, {
         name: name.trim(),
+        system_channel_id: systemChannel || null,
+        allow_guests: allowGuests,
         ...(iconUrl ? { icon_url: iconUrl } : {}),
       })
       setIcon(null)
@@ -179,16 +222,45 @@ function OverviewSection({ serverId }: { serverId: string }) {
           />
         </div>
       </div>
-      {dirty && (
-        <UnsavedBar
-          saving={saving}
-          onReset={() => {
-            setName(server?.name ?? "")
-            setIcon(null)
-          }}
-          onSave={save}
+      <div className="flex flex-col gap-2 border-t border-border pt-6">
+        <SettingsLabel>Canal de mensagens do sistema</SettingsLabel>
+        <NativeSelect
+          value={systemChannel}
+          onChange={(e) => setSystemChannel(e.target.value)}
+          disabled={!editable}
+          className="w-full"
+        >
+          <NativeSelectOption value="">
+            Sem mensagens do sistema
+          </NativeSelectOption>
+          {textChannels.map((channel) => (
+            <NativeSelectOption key={channel.id} value={channel.id}>
+              #{channel.name}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+        <span className="text-xs text-muted-foreground">
+          Este é o canal onde avisamos quando alguém entra no servidor.
+        </span>
+      </div>
+      <label className="flex items-center justify-between gap-4 border-t border-border pt-6">
+        <span className="flex flex-col gap-1">
+          <span className="font-medium text-header">
+            Permitir convidados sem Discord
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Quem entrou no Biscord como convidado, sem uma conta do Discord
+            vinculada, pode aceitar convites para este servidor. Essas contas
+            são apagadas quando a pessoa sai do Biscord.
+          </span>
+        </span>
+        <Switch
+          checked={allowGuests}
+          onCheckedChange={setAllowGuests}
+          disabled={!editable}
         />
-      )}
+      </label>
+      {dirty && <UnsavedBar saving={saving} onReset={reset} onSave={save} />}
     </div>
   )
 }
@@ -658,6 +730,123 @@ function InvitesSection({ serverId }: { serverId: string }) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+function DiscordSyncSection({ serverId }: { serverId: string }) {
+  const qc = useQueryClient()
+  const { data: link } = useQuery(discordLinkQuery(serverId))
+  const progress = importProgressStore.useStore((all) => all[serverId])
+  const [syncing, setSyncing] = useState(false)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
+
+  if (!link) return null
+
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.discordLink(serverId) })
+
+  const toggle = async (sync: boolean) => {
+    try {
+      await setDiscordSync(serverId, sync)
+      await refresh()
+    } catch {
+      toast.error("Não foi possível alterar a sincronização.")
+    }
+  }
+
+  const syncNow = async () => {
+    setSyncing(true)
+    try {
+      const result = await syncDiscordNow(qc, serverId)
+      if (result.error) toast.error(result.error)
+      else if (result.busy) toast("Uma sincronização já está em andamento.")
+      else toast.success("Sincronizado com o Discord.")
+    } catch (e) {
+      toast.error("Não foi possível sincronizar.", {
+        description: (e as Error).message,
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const unlink = async () => {
+    try {
+      await unlinkDiscord(serverId)
+      await refresh()
+    } catch {
+      toast.error("Não foi possível desvincular.")
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-sm text-muted-foreground">
+        Este servidor foi importado de um servidor do Discord.
+        {link.last_synced_at &&
+          ` Última sincronização ${formatDistanceToNow(
+            new Date(link.last_synced_at),
+            { addSuffix: true, locale: ptBR }
+          )}.`}
+      </p>
+      {!link.backfill_done && (
+        <p className="flex items-center gap-2 text-sm text-header">
+          <Spinner />
+          Importando o histórico de mensagens
+          {progress?.messages !== undefined &&
+            ` (${progress.messages} até agora)`}
+          …
+        </p>
+      )}
+      {link.last_error && (
+        <p className="rounded-md bg-danger/15 p-2 text-sm text-header">
+          {link.last_error}
+        </p>
+      )}
+      <label className="flex items-center justify-between gap-4">
+        <span className="flex flex-col gap-1">
+          <span className="font-medium text-header">
+            Manter em sincronia com o Discord
+          </span>
+          <span className="text-xs text-muted-foreground">
+            A cada poucos minutos, traz do Discord mensagens novas (e edições e
+            exclusões recentes), canais, cargos e membros que usam o Biscord.
+            Mudanças feitas aqui não vão para o Discord, e canais ou cargos
+            apagados no Discord também somem daqui.
+          </span>
+        </span>
+        <Switch checked={link.sync} onCheckedChange={toggle} />
+      </label>
+      <div className="flex gap-2">
+        <Button onClick={syncNow} disabled={syncing}>
+          {syncing ? <Spinner /> : <ArrowClockwiseIcon />}
+          Sincronizar agora
+        </Button>
+        <Button variant="secondary" onClick={() => setConfirmUnlink(true)}>
+          Desvincular do Discord
+        </Button>
+      </div>
+      <AlertDialog open={confirmUnlink} onOpenChange={setConfirmUnlink}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desvincular do Discord</AlertDialogTitle>
+            <AlertDialogDescription>
+              O servidor continua com tudo que já foi importado, mas para de
+              receber o que acontece no Discord. Depois disso, o servidor do
+              Discord pode ser importado de novo, como um servidor novo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={unlink}>
+              Desvincular
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

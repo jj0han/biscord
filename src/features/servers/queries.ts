@@ -7,6 +7,7 @@ import { queryKeys } from "@/lib/query-keys"
 import { supabase, unwrap } from "@/lib/supabase"
 import type {
   Channel,
+  DiscordLink,
   Invite,
   InvitePreview,
   MemberRole,
@@ -88,6 +89,21 @@ export function invitesQuery(serverId: string) {
           .select("*")
           .eq("server_id", serverId)
           .order("created_at", { ascending: false })
+      ),
+  })
+}
+
+/** The Discord server this one was imported from, if any. */
+export function discordLinkQuery(serverId: string) {
+  return queryOptions({
+    queryKey: queryKeys.discordLink(serverId),
+    queryFn: async () =>
+      unwrap<DiscordLink | null>(
+        await supabase
+          .from("discord_links")
+          .select("*")
+          .eq("server_id", serverId)
+          .maybeSingle()
       ),
   })
 }
@@ -197,7 +213,9 @@ export async function createServer(name: string, iconUrl: string | null) {
 
 export async function updateServer(
   serverId: string,
-  patch: Partial<Pick<Server, "name" | "icon_url">>
+  patch: Partial<
+    Pick<Server, "name" | "icon_url" | "system_channel_id" | "allow_guests">
+  >
 ) {
   unwrap(await supabase.from("servers").update(patch).eq("id", serverId))
 }
@@ -236,13 +254,38 @@ export async function setNickname(
   )
 }
 
-export async function createInvite(serverId: string, maxAgeSeconds = 604800) {
+export async function createInvite(
+  serverId: string,
+  maxAgeSeconds = 604800,
+  options: { channelId?: string | null; temporary?: boolean } = {}
+) {
   return rpcResult<string>(
     await supabase.rpc("create_invite", {
       p_server: serverId,
       p_max_age_seconds: maxAgeSeconds,
+      p_channel: options.channelId ?? null,
+      p_temporary: options.temporary ?? false,
     })
   )
+}
+
+/** Leaves servers we're only a temporary voice guest in (all, or one). */
+export async function leaveGuestMemberships(
+  userId: string,
+  only?: { serverId: string; channelId: string }
+) {
+  let query = supabase
+    .from("server_members")
+    .delete({ count: "exact" })
+    .eq("user_id", userId)
+    .not("guest_channel_id", "is", null)
+  if (only) {
+    query = query
+      .eq("server_id", only.serverId)
+      .eq("guest_channel_id", only.channelId)
+  }
+  const { count } = await query
+  return (count ?? 0) > 0
 }
 
 export async function acceptInvite(code: string) {

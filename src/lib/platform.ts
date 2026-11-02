@@ -28,5 +28,5 @@ export function initDesktopLinks() {
  * public site instead.
  */
 export const publicOrigin = isDesktop
-  ? "https://biscord.vercel.app"
+  ? "https://biscord-mauve.vercel.app"
   : window.location.origin

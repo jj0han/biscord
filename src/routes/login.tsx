@@ -27,8 +27,14 @@ function Login() {
   const [pending, setPending] = useState<"discord" | "guest" | null>(null)
   const [guestName, setGuestName] = useState("")
 
-  // only allow in-app redirects
-  const target = redirect?.startsWith("/") ? redirect : "/channels/@me"
+  // only allow in-app redirects, and never back to /login itself (old builds
+  // left nested /login?redirect=/login?... URLs that broke the OAuth return)
+  const target =
+    redirect?.startsWith("/") &&
+    !redirect.startsWith("//") &&
+    !redirect.startsWith("/login")
+      ? redirect
+      : "/channels/@me"
 
   if (!loading && session) {
     return <Navigate to={target} replace />

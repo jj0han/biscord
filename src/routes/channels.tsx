@@ -30,6 +30,10 @@ function ChannelsLayout() {
 
   if (loading) return <SplashScreen />
   if (!session) {
+    // While the redirect is in flight this layout re-renders with the /login
+    // location already current; redirecting again from there nested
+    // /login?redirect=/login?redirect=... until the URL was kilobytes long.
+    if (!location.pathname.startsWith("/channels")) return <SplashScreen />
     return <Navigate to="/login" search={{ redirect: location.href }} replace />
   }
 

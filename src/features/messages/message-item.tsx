@@ -110,7 +110,10 @@ function ImportedName({ author }: { author: ImportedAuthor }) {
 
 function ReplyPreview({ message }: { message: Message }) {
   const { serverId } = useChat()
-  const reply = message.reply
+  // guard against an unexpected embed shape (e.g. an array) taking down the
+  // whole channel
+  const reply =
+    message.reply && !Array.isArray(message.reply) ? message.reply : null
   const profile = useProfile(reply?.author_id)
   const member = useMember(serverId, reply?.author_id ?? "")
   const color = useMemberColor(serverId, reply?.author_id ?? "")
@@ -129,7 +132,7 @@ function ReplyPreview({ message }: { message: Message }) {
           </span>
           <span className="truncate text-muted-foreground">
             {reply.content ||
-              (reply.attachments.length ? "Clique para ver o anexo" : "")}
+              (reply.attachments?.length ? "Clique para ver o anexo" : "")}
           </span>
         </>
       ) : (

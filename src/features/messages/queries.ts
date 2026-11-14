@@ -11,8 +11,11 @@ import type { Attachment, Embed, Message, UnreadState } from "@/lib/types"
 
 export const PAGE_SIZE = 50
 
+// Embed the replied-to message through the reply_to_id column itself: the
+// older `messages!reply_to_id` hint started resolving to the reverse
+// (one-to-many) side and returned `[]` for every message.
 const MESSAGE_SELECT =
-  "*, reactions(message_id, user_id, emoji), reply:messages!reply_to_id(id, author_id, content, attachments)"
+  "*, reactions(message_id, user_id, emoji), reply:reply_to_id(id, author_id, content, attachments)"
 
 export type MessagePages = InfiniteData<Message[], string | null>
 
